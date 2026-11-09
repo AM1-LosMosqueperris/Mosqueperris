@@ -21,9 +21,6 @@ Actualmente, el proyecto cuenta con los siguientes módulos:
 3. **Servicios:** muestra los servicios disponibles para el cuidado animal.
 4. **Reserva de citas:** permite registrar solicitudes de citas y seleccionar servicios.
 5. **Control de vacunas:** permite registrar vacunas y sus fechas correspondientes.
-6. **Historial:** sección destinada a consultar información relacionada con las mascotas.
-7. **Tienda:** muestra productos relacionados con el cuidado animal.
-8. **Contacto:** presenta información de contacto y ubicación de referencia.
 
 ## 🛠️ Tecnologías utilizadas
 
@@ -60,7 +57,7 @@ Para ejecutar el proyecto se necesita:
 2. Ingresar a la carpeta del proyecto:
 
    ```bash
-   cd petcare-app
+   cd PetCare
    ```
 
 3. Descargar las dependencias:
@@ -91,7 +88,7 @@ Se cuenta con las pantallas principales y la navegación entre los módulos. Ent
 
 Proyecto académico de desarrollo de aplicaciones móviles.
 
-**Nombre del proyecto:** PetCare Santa Cruz.
+**Nombre del proyecto:** PetCare.
 
 ---
 
