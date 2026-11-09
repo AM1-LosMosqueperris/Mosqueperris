@@ -1,18 +1,18 @@
-# 🐾 PetCare Santa Cruz
+#  PetCare Santa Cruz
 
 **Aplicación móvil para la gestión y el cuidado de mascotas.**
 
-## 📌 Descripción del proyecto
+##  Descripción del proyecto
 
 PetCare Santa Cruz es una aplicación móvil desarrollada con Flutter y Dart, cuyo propósito es facilitar a los propietarios de mascotas el acceso a diferentes servicios y herramientas para organizar el cuidado de sus animales.
 
 La aplicación reúne funcionalidades como el registro de mascotas, consulta de servicios veterinarios, reserva de citas y control de vacunas, dentro de una interfaz sencilla e intuitiva.
 
-## 🎯 Objetivo
+##  Objetivo
 
 Desarrollar una aplicación móvil que permita centralizar la información y facilitar la organización de las actividades relacionadas con el cuidado de las mascotas.
 
-## 🚀 Funcionalidades principales
+##  Funcionalidades principales
 
 Actualmente, el proyecto cuenta con los siguientes módulos:
 
@@ -22,7 +22,7 @@ Actualmente, el proyecto cuenta con los siguientes módulos:
 4. **Reserva de citas:** permite registrar solicitudes de citas y seleccionar servicios.
 5. **Control de vacunas:** permite registrar vacunas y sus fechas correspondientes.
 
-## 🛠️ Tecnologías utilizadas
+##  Tecnologías utilizadas
 
 - **Flutter:** framework para el desarrollo de aplicaciones móviles.
 - **Dart:** lenguaje de programación.
@@ -30,13 +30,13 @@ Actualmente, el proyecto cuenta con los siguientes módulos:
 - **Visual Studio Code:** editor de código.
 - **Git y GitHub:** control de versiones y alojamiento del código fuente.
 
-## 📱 Plataforma de desarrollo
+##  Plataforma de desarrollo
 
 - Sistema operativo de desarrollo: Windows.
 - Plataforma de ejecución actual: Android.
 - Framework: Flutter.
 
-## 📋 Requisitos
+##  Requisitos
 
 Para ejecutar el proyecto se necesita:
 
@@ -46,7 +46,7 @@ Para ejecutar el proyecto se necesita:
 - Android SDK.
 - Un emulador Android o dispositivo compatible.
 
-## ⚙️ Instalación y ejecución
+##  Instalación y ejecución
 
 1. Clonar el repositorio:
 
@@ -72,7 +72,7 @@ Para ejecutar el proyecto se necesita:
    flutter run
    ```
 
-## 📌 Estado del proyecto
+##  Estado del proyecto
 
 **En desarrollo.**
 
@@ -84,7 +84,7 @@ Se cuenta con las pantallas principales y la navegación entre los módulos. Ent
 - Realizar pruebas de funcionamiento y navegación.
 - Mejorar la experiencia de usuario.
 
-## 👨‍💻 Desarrollo
+##  Desarrollo
 
 Proyecto académico de desarrollo de aplicaciones móviles.
 
@@ -92,4 +92,4 @@ Proyecto académico de desarrollo de aplicaciones móviles.
 
 ---
 
-*PetCare Santa Cruz – Tecnología al servicio del cuidado de las mascotas.* 🐶🐱
+*PetCare Santa Cruz – Tecnología al servicio del cuidado de las mascotas.*
