@@ -1,6 +1,6 @@
-
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
 import '../utils/validadores.dart';
 
 class ConsultasScreen extends StatefulWidget {
@@ -38,7 +38,53 @@ class _ConsultasScreenState extends State<ConsultasScreen> {
     });
 
     try {
+      final usuario = Supabase.instance.client.auth.currentUser;
+
+      if (usuario == null) {
+        if (!mounted) return;
+
+        setState(() {
+          _enviando = false;
+        });
+
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            title: const Text('Inicia sesión'),
+            content: const Text(
+              'Para enviar una consulta necesitas iniciar sesión '
+              'o crear una cuenta en PetCare.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                },
+                child: const Text('Cancelar'),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF17623F),
+                  foregroundColor: Colors.white,
+                ),
+                onPressed: () {
+                  Navigator.pop(context);
+                  Navigator.pushNamed(context, '/login');
+                },
+                child: const Text('Iniciar sesión'),
+              ),
+            ],
+          ),
+        );
+
+        return;
+      }
+
       await Supabase.instance.client.from('consultas').insert({
+        'usuario_id': usuario.id,
         'nombre': _nombre.text.trim(),
         'telefono': _telefono.text.trim(),
         'mensaje': _mensaje.text.trim(),
@@ -162,9 +208,7 @@ class _ConsultasScreenState extends State<ConsultasScreen> {
                           ),
                         )
                       : const Icon(Icons.send),
-                  label: Text(
-                    _enviando ? 'Enviando...' : 'Enviar consulta',
-                  ),
+                  label: Text(_enviando ? 'Enviando...' : 'Enviar consulta'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: verde,
                     foregroundColor: Colors.white,

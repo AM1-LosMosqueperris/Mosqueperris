@@ -1,6 +1,6 @@
-
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
 import 'config/config.dart';
 
 import 'screens/inicio.dart';
@@ -13,6 +13,8 @@ import 'screens/tienda.dart';
 import 'screens/contacto.dart';
 import 'screens/bienvenida.dart';
 import 'screens/consultas.dart';
+import 'screens/login.dart';
+import 'screens/nueva_password.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -21,6 +23,9 @@ Future<void> main() async {
     await Supabase.initialize(
       url: Config.supabaseUrl,
       publishableKey: Config.supabaseAnonKey,
+      authOptions: const FlutterAuthClientOptions(
+        authFlowType: AuthFlowType.pkce,
+      ),
     );
 
     final respuesta = await Supabase.instance.client
@@ -28,46 +33,89 @@ Future<void> main() async {
         .select('id')
         .limit(1);
 
-    print('CONEXION SUPABASE CORRECTA: $respuesta');
+    debugPrint('CONEXION SUPABASE CORRECTA: $respuesta');
   } catch (e) {
-    print('ERROR DE CONEXION SUPABASE: $e');
+    debugPrint('ERROR DE CONEXION SUPABASE: $e');
   }
 
   runApp(const PetCareApp());
 }
 
-class PetCareApp extends StatelessWidget {
+class PetCareApp extends StatefulWidget {
   const PetCareApp({super.key});
+
+  @override
+  State<PetCareApp> createState() => _PetCareAppState();
+}
+
+class _PetCareAppState extends State<PetCareApp> {
+  final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
+
+  late final dynamic _authSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _authSubscription = Supabase.instance.client.auth.onAuthStateChange.listen(
+      (data) {
+        debugPrint('EVENTO SUPABASE: ${data.event}');
+
+        if (data.event == AuthChangeEvent.passwordRecovery) {
+          debugPrint('RECUPERACION DETECTADA');
+
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            final navigator = _navigatorKey.currentState;
+
+            if (navigator != null && navigator.mounted) {
+              debugPrint('ABRIENDO PANTALLA NUEVA PASSWORD');
+              navigator.pushNamed('/nueva-password');
+            } else {
+              debugPrint('ERROR: NAVIGATOR NO DISPONIBLE');
+            }
+          });
+        }
+      },
+      onError: (error, stackTrace) {
+        debugPrint('Error en autenticación: $error');
+      },
+    );
+  }
+
+  @override
+  void dispose() {
+    _authSubscription.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: _navigatorKey,
       debugShowCheckedModeBanner: false,
       title: 'PetCare Santa Cruz',
       theme: ThemeData(
         useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF17623F),
-        ),
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF17623F)),
         scaffoldBackgroundColor: const Color(0xFFF7FAF6),
       ),
       home: const BienvenidaScreen(),
       routes: {
-        '/app': (context) => const PetCareNavigation(
-              initialIndex: 2,
-            ),
+        '/app': (context) => const PetCareNavigation(initialIndex: 2),
+        '/login': (context) => const LoginScreen(),
+        '/nueva-password': (context) => const NuevaPasswordScreen(),
+      },
+      onUnknownRoute: (settings) {
+        return MaterialPageRoute(builder: (context) => const LoginScreen());
       },
     );
   }
 }
 
-  class PetCareNavigation extends StatefulWidget {
-    final int initialIndex;
+class PetCareNavigation extends StatefulWidget {
+  final int initialIndex;
 
-    const PetCareNavigation({
-      super.key,
-      this.initialIndex = 0,
-    });
+  const PetCareNavigation({super.key, this.initialIndex = 0});
 
   @override
   State<PetCareNavigation> createState() => _PetCareNavigationState();
@@ -85,20 +133,16 @@ class _PetCareNavigationState extends State<PetCareNavigation> {
   }
 
   List<Widget> get screens => [
-        InicioScreen(onNavigate: cambiarPantalla),
-        const RegistroMascotasScreen(),
-        ServiciosScreen(
-          onSolicitarServicio: solicitarServicio,
-        ),
-        ReservasCitasScreen(
-          servicioInicial: servicioPendiente,
-        ),
-        const ControlVacunasScreen(),
-        const HistorialScreen(),
-        const TiendaScreen(),
-        const ContactoScreen(),
-        const ConsultasScreen(),
-      ];
+    InicioScreen(onNavigate: cambiarPantalla),
+    const RegistroMascotasScreen(),
+    ServiciosScreen(onSolicitarServicio: solicitarServicio),
+    ReservasCitasScreen(servicioInicial: servicioPendiente),
+    const ControlVacunasScreen(),
+    const HistorialScreen(),
+    const TiendaScreen(),
+    const ContactoScreen(),
+    const ConsultasScreen(),
+  ];
 
   void cambiarPantalla(int index) {
     setState(() {
@@ -138,11 +182,7 @@ class _PetCareNavigationState extends State<PetCareNavigation> {
                   CircleAvatar(
                     radius: 30,
                     backgroundColor: Colors.white,
-                    child: Icon(
-                      Icons.pets,
-                      size: 35,
-                      color: Color(0xFF17623F),
-                    ),
+                    child: Icon(Icons.pets, size: 35, color: Color(0xFF17623F)),
                   ),
                   SizedBox(height: 15),
                   Text(
@@ -168,11 +208,7 @@ class _PetCareNavigationState extends State<PetCareNavigation> {
                 children: [
                   _opcionMenu(Icons.home_outlined, 'Inicio', 0),
                   _opcionMenu(Icons.pets_outlined, 'Mis mascotas', 1),
-                  _opcionMenu(
-                    Icons.medical_services_outlined,
-                    'Servicios',
-                    2,
-                  ),
+                  _opcionMenu(Icons.medical_services_outlined, 'Servicios', 2),
                   _opcionMenu(
                     Icons.calendar_month_outlined,
                     'Reservar cita',
@@ -184,38 +220,52 @@ class _PetCareNavigationState extends State<PetCareNavigation> {
 
                   _opcionMenu(Icons.history, 'Historial', 5),
                   _opcionMenu(Icons.store_outlined, 'Tienda', 6),
-                  _opcionMenu(
-                    Icons.contact_support_outlined,
-                    'Contacto',
-                    7,
-                  ),
-                  _opcionMenu(
-                    Icons.question_answer_outlined,
-                    'Consultas',
-                    8,
-                  ),
+                  _opcionMenu(Icons.contact_support_outlined, 'Contacto', 7),
+                  _opcionMenu(Icons.question_answer_outlined, 'Consultas', 8),
                 ],
               ),
             ),
 
-            const Padding(
-              padding: EdgeInsets.all(15),
-              child: Text(
-                'PetCare Santa Cruz © 2026',
-                style: TextStyle(
-                  color: Colors.black54,
-                  fontSize: 12,
+            Column(
+              children: [
+                const Divider(),
+
+                ListTile(
+                  leading: const Icon(Icons.logout, color: Colors.red),
+                  title: const Text(
+                    'Cerrar sesión',
+                    style: TextStyle(
+                      color: Colors.red,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  onTap: () async {
+                    await Supabase.instance.client.auth.signOut();
+
+                    if (!context.mounted) return;
+
+                    Navigator.pushNamedAndRemoveUntil(
+                      context,
+                      '/login',
+                      (route) => false,
+                    );
+                  },
                 ),
-              ),
+
+                const Padding(
+                  padding: EdgeInsets.all(15),
+                  child: Text(
+                    'PetCare Santa Cruz © 2026',
+                    style: TextStyle(color: Colors.black54, fontSize: 12),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
       ),
 
-      body: IndexedStack(
-        index: selectedIndex,
-        children: screens,
-      ),
+      body: IndexedStack(index: selectedIndex, children: screens),
 
       floatingActionButton: Builder(
         builder: (context) => FloatingActionButton.small(

@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 
 class BienvenidaScreen extends StatelessWidget {
@@ -27,11 +26,7 @@ class BienvenidaScreen extends StatelessWidget {
                     color: verdeClaro,
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(
-                    Icons.pets,
-                    size: 85,
-                    color: verde,
-                  ),
+                  child: const Icon(Icons.pets, size: 85, color: verde),
                 ),
 
                 const SizedBox(height: 30),
@@ -100,10 +95,7 @@ class BienvenidaScreen extends StatelessWidget {
                   height: 55,
                   child: ElevatedButton(
                     onPressed: () {
-                      Navigator.pushReplacementNamed(
-                        context,
-                        '/app',
-                      );
+                      Navigator.pushReplacementNamed(context, '/app');
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: verde,
@@ -128,16 +120,37 @@ class BienvenidaScreen extends StatelessWidget {
                     ),
                   ),
                 ),
+                const SizedBox(height: 12),
 
+                SizedBox(
+                  width: double.infinity,
+                  height: 55,
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      Navigator.pushNamed(context, '/login');
+                    },
+                    icon: const Icon(Icons.person_outline),
+                    label: const Text(
+                      'Iniciar sesión / Registrarse',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: verde,
+                      side: const BorderSide(color: verde),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(15),
+                      ),
+                    ),
+                  ),
+                ),
                 const SizedBox(height: 25),
-
                 const Text(
                   'El bienestar de tu mascota comienza aquí 🐾',
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Colors.black45,
-                    fontSize: 12,
-                  ),
+                  style: TextStyle(color: Colors.black45, fontSize: 12),
                 ),
               ],
             ),

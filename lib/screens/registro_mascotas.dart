@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -6,12 +5,10 @@ class RegistroMascotasScreen extends StatefulWidget {
   const RegistroMascotasScreen({super.key});
 
   @override
-  State<RegistroMascotasScreen> createState() =>
-      _RegistroMascotasScreenState();
+  State<RegistroMascotasScreen> createState() => _RegistroMascotasScreenState();
 }
 
-class _RegistroMascotasScreenState
-    extends State<RegistroMascotasScreen> {
+class _RegistroMascotasScreenState extends State<RegistroMascotasScreen> {
   final _formKey = GlobalKey<FormState>();
   final db = Supabase.instance.client;
 
@@ -84,7 +81,53 @@ class _RegistroMascotasScreenState
     });
 
     try {
+      final usuario = db.auth.currentUser;
+
+      if (usuario == null) {
+        if (!mounted) return;
+
+        setState(() {
+          enviando = false;
+        });
+
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            title: const Text('Inicia sesión'),
+            content: const Text(
+              'Para registrar una mascota necesitas iniciar sesión '
+              'o crear una cuenta en PetCare.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                },
+                child: const Text('Cancelar'),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF17623F),
+                  foregroundColor: Colors.white,
+                ),
+                onPressed: () {
+                  Navigator.pop(context);
+                  Navigator.pushNamed(context, '/login');
+                },
+                child: const Text('Iniciar sesión'),
+              ),
+            ],
+          ),
+        );
+
+        return;
+      }
+
       await db.from('mascotas').insert({
+        'usuario_id': usuario.id,
         'nombre': nombreController.text.trim(),
         'especie': especieSeleccionada,
         'raza': razaController.text.trim(),
@@ -169,19 +212,12 @@ class _RegistroMascotasScreenState
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Icon(
-                  Icons.pets,
-                  size: 65,
-                  color: Color(0xFF269B79),
-                ),
+                const Icon(Icons.pets, size: 65, color: Color(0xFF269B79)),
                 const SizedBox(height: 10),
                 const Text(
                   'Registro de mascotas',
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
                 const Text(
@@ -208,8 +244,7 @@ class _RegistroMascotasScreenState
                               border: OutlineInputBorder(),
                             ),
                             validator: (value) {
-                              if (value == null ||
-                                  value.trim().isEmpty) {
+                              if (value == null || value.trim().isEmpty) {
                                 return 'Ingresa el nombre de la mascota';
                               }
                               return null;
@@ -224,8 +259,7 @@ class _RegistroMascotasScreenState
                               prefixIcon: Icon(Icons.category),
                               border: OutlineInputBorder(),
                             ),
-                            items: ['Perro', 'Gato', 'Otro']
-                                .map((especie) {
+                            items: ['Perro', 'Gato', 'Otro'].map((especie) {
                               return DropdownMenuItem(
                                 value: especie,
                                 child: Text(especie),
@@ -274,16 +308,13 @@ class _RegistroMascotasScreenState
                               border: OutlineInputBorder(),
                             ),
                             validator: (value) {
-                              if (value == null ||
-                                  value.trim().isEmpty) {
+                              if (value == null || value.trim().isEmpty) {
                                 return 'Ingresa la edad';
                               }
 
                               final edad = int.tryParse(value.trim());
 
-                              if (edad == null ||
-                                  edad < 0 ||
-                                  edad > 40) {
+                              if (edad == null || edad < 0 || edad > 40) {
                                 return 'Ingresa una edad entre 0 y 40 años';
                               }
 
@@ -300,8 +331,7 @@ class _RegistroMascotasScreenState
                               border: OutlineInputBorder(),
                             ),
                             validator: (value) {
-                              if (value == null ||
-                                  value.trim().isEmpty) {
+                              if (value == null || value.trim().isEmpty) {
                                 return 'Ingresa la raza';
                               }
                               return null;
@@ -317,8 +347,7 @@ class _RegistroMascotasScreenState
                               border: OutlineInputBorder(),
                             ),
                             validator: (value) {
-                              if (value == null ||
-                                  value.trim().isEmpty) {
+                              if (value == null || value.trim().isEmpty) {
                                 return 'Ingresa el nombre del propietario';
                               }
                               return null;
@@ -330,8 +359,7 @@ class _RegistroMascotasScreenState
                             width: double.infinity,
                             height: 50,
                             child: ElevatedButton.icon(
-                              onPressed:
-                                  enviando ? null : registrarMascota,
+                              onPressed: enviando ? null : registrarMascota,
                               icon: enviando
                                   ? const SizedBox(
                                       width: 20,
@@ -343,14 +371,11 @@ class _RegistroMascotasScreenState
                                     )
                                   : const Icon(Icons.save),
                               label: Text(
-                                enviando
-                                    ? 'Guardando...'
-                                    : 'Registrar mascota',
+                                enviando ? 'Guardando...' : 'Registrar mascota',
                                 style: const TextStyle(fontSize: 16),
                               ),
                               style: ElevatedButton.styleFrom(
-                                backgroundColor:
-                                    const Color(0xFF269B79),
+                                backgroundColor: const Color(0xFF269B79),
                                 foregroundColor: Colors.white,
                               ),
                             ),
@@ -365,10 +390,7 @@ class _RegistroMascotasScreenState
 
                 const Text(
                   'Mascotas registradas',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 10),
 
@@ -407,16 +429,11 @@ class _RegistroMascotasScreenState
                       child: ListTile(
                         leading: const CircleAvatar(
                           backgroundColor: Color(0xFFE0F2EC),
-                          child: Icon(
-                            Icons.pets,
-                            color: Color(0xFF269B79),
-                          ),
+                          child: Icon(Icons.pets, color: Color(0xFF269B79)),
                         ),
                         title: Text(
                           mascota['nombre']?.toString() ?? '',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                          ),
+                          style: const TextStyle(fontWeight: FontWeight.bold),
                         ),
                         subtitle: Text(
                           '${mascota['especie']} • '
