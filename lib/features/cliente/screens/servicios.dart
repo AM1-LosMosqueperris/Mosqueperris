@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../models/servicio.dart';
-import '../services/servicio_service.dart';
+import 'package:petcare_santa_cruz/models/servicio.dart';
+import 'package:petcare_santa_cruz/services/servicio_service.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 

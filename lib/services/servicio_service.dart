@@ -1,5 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../models/servicio.dart';
+import 'package:petcare_santa_cruz/models/servicio.dart';
 
 class ServicioService {
   final db = Supabase.instance.client;

@@ -1,23 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'config/config.dart';
+import 'package:petcare_santa_cruz/config/config.dart';
 
-import 'screens/inicio.dart';
-import 'screens/registro_mascotas.dart';
-import 'screens/servicios.dart';
-import 'screens/reservas_citas.dart';
-import 'screens/control_vacunas.dart';
-import 'screens/historial.dart';
-import 'screens/tienda.dart';
-import 'screens/contacto.dart';
-import 'screens/bienvenida.dart';
-import 'screens/consultas.dart';
-import 'screens/login.dart';
-import 'screens/nueva_password.dart';
-import 'screens/panel_veterinario.dart';
-import 'screens/panel_administrador.dart';
-import 'screens/notificaciones.dart';
+import 'package:petcare_santa_cruz/features/cliente/screens/inicio.dart';
+import 'package:petcare_santa_cruz/features/cliente/screens/registro_mascotas.dart';
+import 'package:petcare_santa_cruz/features/cliente/screens/servicios.dart';
+import 'package:petcare_santa_cruz/features/cliente/screens/reservas_citas.dart';
+import 'package:petcare_santa_cruz/features/cliente/screens/control_vacunas.dart';
+import 'package:petcare_santa_cruz/features/cliente/screens/historial.dart';
+import 'package:petcare_santa_cruz/features/cliente/screens/tienda.dart';
+import 'package:petcare_santa_cruz/features/cliente/screens/contacto.dart';
+import 'package:petcare_santa_cruz/features/auth/screens/bienvenida.dart';
+import 'package:petcare_santa_cruz/features/cliente/screens/consultas.dart';
+import 'package:petcare_santa_cruz/features/auth/screens/login.dart';
+import 'package:petcare_santa_cruz/features/auth/screens/nueva_password.dart';
+import 'package:petcare_santa_cruz/features/veterinario/screens/panel_veterinario.dart';
+import 'package:petcare_santa_cruz/features/administrador/screens/panel_administrador.dart';
+import 'package:petcare_santa_cruz/features/notificaciones/screens/notificaciones.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();

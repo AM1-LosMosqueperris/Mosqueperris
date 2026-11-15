@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'detalle_mascota_veterinario.dart';
-import 'citas_veterinario.dart';
-import 'notificaciones.dart';
+import 'package:petcare_santa_cruz/features/veterinario/screens/detalle_mascota_veterinario.dart';
+import 'package:petcare_santa_cruz/features/veterinario/screens/citas_veterinario.dart';
+import 'package:petcare_santa_cruz/features/notificaciones/screens/notificaciones.dart';
 
 class PanelVeterinarioScreen extends StatefulWidget {
   const PanelVeterinarioScreen({super.key});

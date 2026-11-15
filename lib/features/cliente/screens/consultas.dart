@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../utils/validadores.dart';
+import 'package:petcare_santa_cruz/utils/validadores.dart';
 
 class ConsultasScreen extends StatefulWidget {
   final VoidCallback? onOpenMenu;

@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'gestion_servicios.dart';
-import 'gestion_mascotas.dart';
-import 'gestion_reservas_admin.dart';
-import 'reportes_admin.dart';
-import 'notificaciones.dart';
+import 'package:petcare_santa_cruz/features/administrador/screens/gestion_servicios.dart';
+import 'package:petcare_santa_cruz/features/administrador/screens/gestion_mascotas.dart';
+import 'package:petcare_santa_cruz/features/administrador/screens/gestion_reservas_admin.dart';
+import 'package:petcare_santa_cruz/features/administrador/screens/reportes_admin.dart';
+import 'package:petcare_santa_cruz/features/notificaciones/screens/notificaciones.dart';
 
 class PanelAdministradorScreen extends StatefulWidget {
   const PanelAdministradorScreen({super.key});
