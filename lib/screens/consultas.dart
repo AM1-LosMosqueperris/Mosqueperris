@@ -4,7 +4,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../utils/validadores.dart';
 
 class ConsultasScreen extends StatefulWidget {
-  const ConsultasScreen({super.key});
+  final VoidCallback? onOpenMenu;
+
+  const ConsultasScreen({super.key, this.onOpenMenu});
 
   @override
   State<ConsultasScreen> createState() => _ConsultasScreenState();
@@ -125,6 +127,13 @@ class _ConsultasScreenState extends State<ConsultasScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF7FAF6),
       appBar: AppBar(
+        leading: widget.onOpenMenu == null
+            ? null
+            : IconButton(
+                tooltip: 'Abrir menú',
+                icon: const Icon(Icons.menu),
+                onPressed: widget.onOpenMenu,
+              ),
         title: const Text('Formulario de consulta'),
         backgroundColor: verde,
         foregroundColor: Colors.white,

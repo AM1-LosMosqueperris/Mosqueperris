@@ -95,7 +95,7 @@ class BienvenidaScreen extends StatelessWidget {
                   height: 55,
                   child: ElevatedButton(
                     onPressed: () {
-                      Navigator.pushReplacementNamed(context, '/app');
+                      Navigator.pushNamed(context, '/servicios-publicos');
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: verde,
@@ -120,6 +120,7 @@ class BienvenidaScreen extends StatelessWidget {
                     ),
                   ),
                 ),
+
                 const SizedBox(height: 12),
 
                 SizedBox(
@@ -146,7 +147,9 @@ class BienvenidaScreen extends StatelessWidget {
                     ),
                   ),
                 ),
+
                 const SizedBox(height: 25),
+
                 const Text(
                   'El bienestar de tu mascota comienza aquí 🐾',
                   textAlign: TextAlign.center,

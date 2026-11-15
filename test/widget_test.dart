@@ -20,17 +20,19 @@ void main() {
   ) async {
     await tester.pumpWidget(const PetCareApp());
 
-    // Comprobar pantalla de bienvenida
+    // Comprobar pantalla de bienvenida.
     expect(find.text('PetCare Santa Cruz'), findsOneWidget);
     expect(find.text('Cuidamos a quienes más quieres'), findsOneWidget);
     expect(find.text('¡Bienvenido!'), findsOneWidget);
     expect(find.text('Ver servicios'), findsOneWidget);
     expect(find.text('Iniciar sesión / Registrarse'), findsOneWidget);
 
-    // Probar navegación
+    // Probar navegación hacia servicios.
     await tester.tap(find.text('Ver servicios'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Servicios'), findsOneWidget);
+    // Comprobar encabezado de la pantalla de servicios.
+    expect(find.text('Nuestros servicios'), findsOneWidget);
+    expect(find.text('Cuidado y bienestar'), findsOneWidget);
   });
 }

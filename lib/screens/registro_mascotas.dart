@@ -2,13 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class RegistroMascotasScreen extends StatefulWidget {
-  const RegistroMascotasScreen({super.key});
+  final VoidCallback? onOpenMenu;
+
+  const RegistroMascotasScreen({super.key, this.onOpenMenu});
 
   @override
   State<RegistroMascotasScreen> createState() => _RegistroMascotasScreenState();
 }
 
 class _RegistroMascotasScreenState extends State<RegistroMascotasScreen> {
+  static const Color verde = Color(0xFF17623F);
+  static const Color verdeClaro = Color(0xFFE8F5ED);
+  static const Color fondo = Color(0xFFF7FAF6);
+
   final _formKey = GlobalKey<FormState>();
   final db = Supabase.instance.client;
 
@@ -31,12 +37,29 @@ class _RegistroMascotasScreenState extends State<RegistroMascotasScreen> {
     cargarMascotas();
   }
 
-  // Consultar mascotas guardadas en Supabase
   Future<void> cargarMascotas() async {
+    final usuario = db.auth.currentUser;
+
+    if (usuario == null) {
+      if (!mounted) return;
+      setState(() {
+        mascotas = [];
+        cargando = false;
+      });
+      return;
+    }
+
+    if (mounted) {
+      setState(() {
+        cargando = true;
+      });
+    }
+
     try {
       final datos = await db
           .from('mascotas')
           .select()
+          .eq('usuario_id', usuario.id)
           .order('created_at', ascending: false);
 
       if (!mounted) return;
@@ -61,7 +84,6 @@ class _RegistroMascotasScreenState extends State<RegistroMascotasScreen> {
     }
   }
 
-  // Registrar mascota en Supabase
   Future<void> registrarMascota() async {
     if (enviando) return;
 
@@ -69,7 +91,6 @@ class _RegistroMascotasScreenState extends State<RegistroMascotasScreen> {
 
     final edad = int.parse(edadController.text.trim());
 
-    // Convertir la edad en una fecha aproximada de nacimiento
     final fechaNacimiento = DateTime(
       DateTime.now().year - edad,
       DateTime.now().month,
@@ -92,7 +113,7 @@ class _RegistroMascotasScreenState extends State<RegistroMascotasScreen> {
 
         showDialog(
           context: context,
-          builder: (context) => AlertDialog(
+          builder: (dialogContext) => AlertDialog(
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20),
             ),
@@ -104,17 +125,17 @@ class _RegistroMascotasScreenState extends State<RegistroMascotasScreen> {
             actions: [
               TextButton(
                 onPressed: () {
-                  Navigator.pop(context);
+                  Navigator.pop(dialogContext);
                 },
                 child: const Text('Cancelar'),
               ),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF17623F),
+                  backgroundColor: verde,
                   foregroundColor: Colors.white,
                 ),
                 onPressed: () {
-                  Navigator.pop(context);
+                  Navigator.pop(dialogContext);
                   Navigator.pushNamed(context, '/login');
                 },
                 child: const Text('Iniciar sesión'),
@@ -157,7 +178,7 @@ class _RegistroMascotasScreenState extends State<RegistroMascotasScreen> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('¡Mascota guardada correctamente en Supabase!'),
+          content: Text('¡Mascota registrada correctamente!'),
           backgroundColor: Color(0xFF269B79),
         ),
       );
@@ -179,6 +200,23 @@ class _RegistroMascotasScreenState extends State<RegistroMascotasScreen> {
     }
   }
 
+  int? calcularEdad(dynamic fechaNacimiento) {
+    if (fechaNacimiento == null) return null;
+
+    final fecha = DateTime.tryParse(fechaNacimiento.toString());
+    if (fecha == null) return null;
+
+    final hoy = DateTime.now();
+    var edad = hoy.year - fecha.year;
+
+    if (hoy.month < fecha.month ||
+        (hoy.month == fecha.month && hoy.day < fecha.day)) {
+      edad--;
+    }
+
+    return edad < 0 ? 0 : edad;
+  }
+
   @override
   void dispose() {
     nombreController.dispose();
@@ -191,266 +229,522 @@ class _RegistroMascotasScreenState extends State<RegistroMascotasScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: fondo,
       appBar: AppBar(
-        title: const Text(
-          'PetCare Santa Cruz',
-          style: TextStyle(fontWeight: FontWeight.bold),
+        backgroundColor: verde,
+        foregroundColor: Colors.white,
+        elevation: 0,
+        leading: widget.onOpenMenu == null
+            ? null
+            : IconButton(
+                tooltip: 'Abrir menú',
+                icon: const Icon(Icons.menu),
+                onPressed: widget.onOpenMenu,
+              ),
+        title: const Row(
+          children: [
+            Icon(Icons.pets, size: 24),
+            SizedBox(width: 10),
+            Text(
+              'PetCare Santa Cruz',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+            ),
+          ],
         ),
         actions: [
           IconButton(
             tooltip: 'Actualizar mascotas',
-            onPressed: cargarMascotas,
+            onPressed: cargando ? null : cargarMascotas,
             icon: const Icon(Icons.refresh),
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 600),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Icon(Icons.pets, size: 65, color: Color(0xFF269B79)),
-                const SizedBox(height: 10),
-                const Text(
-                  'Registro de mascotas',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Registra a tu compañero para cuidar mejor de su salud.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.grey),
-                ),
-                const SizedBox(height: 25),
-
-                Card(
-                  elevation: 2,
-                  color: Colors.white,
-                  child: Padding(
-                    padding: const EdgeInsets.all(18),
-                    child: Form(
-                      key: _formKey,
-                      child: Column(
-                        children: [
-                          TextFormField(
-                            controller: nombreController,
-                            decoration: const InputDecoration(
-                              labelText: 'Nombre de la mascota',
-                              prefixIcon: Icon(Icons.pets),
-                              border: OutlineInputBorder(),
-                            ),
-                            validator: (value) {
-                              if (value == null || value.trim().isEmpty) {
-                                return 'Ingresa el nombre de la mascota';
-                              }
-                              return null;
-                            },
-                          ),
-                          const SizedBox(height: 16),
-
-                          DropdownButtonFormField<String>(
-                            initialValue: especieSeleccionada,
-                            decoration: const InputDecoration(
-                              labelText: 'Especie',
-                              prefixIcon: Icon(Icons.category),
-                              border: OutlineInputBorder(),
-                            ),
-                            items: ['Perro', 'Gato', 'Otro'].map((especie) {
-                              return DropdownMenuItem(
-                                value: especie,
-                                child: Text(especie),
-                              );
-                            }).toList(),
-                            onChanged: (value) {
-                              if (value != null) {
-                                setState(() {
-                                  especieSeleccionada = value;
-                                });
-                              }
-                            },
-                          ),
-                          const SizedBox(height: 16),
-
-                          DropdownButtonFormField<String>(
-                            initialValue: sexoSeleccionado,
-                            decoration: const InputDecoration(
-                              labelText: 'Sexo',
-                              prefixIcon: Icon(Icons.wc),
-                              border: OutlineInputBorder(),
-                            ),
-                            items: ['Macho', 'Hembra'].map((sexo) {
-                              return DropdownMenuItem(
-                                value: sexo,
-                                child: Text(sexo),
-                              );
-                            }).toList(),
-                            onChanged: (value) {
-                              if (value != null) {
-                                setState(() {
-                                  sexoSeleccionado = value;
-                                });
-                              }
-                            },
-                          ),
-                          const SizedBox(height: 16),
-
-                          TextFormField(
-                            controller: edadController,
-                            keyboardType: TextInputType.number,
-                            decoration: const InputDecoration(
-                              labelText: 'Edad en años',
-                              hintText: 'Ej. 2',
-                              prefixIcon: Icon(Icons.cake),
-                              border: OutlineInputBorder(),
-                            ),
-                            validator: (value) {
-                              if (value == null || value.trim().isEmpty) {
-                                return 'Ingresa la edad';
-                              }
-
-                              final edad = int.tryParse(value.trim());
-
-                              if (edad == null || edad < 0 || edad > 40) {
-                                return 'Ingresa una edad entre 0 y 40 años';
-                              }
-
-                              return null;
-                            },
-                          ),
-                          const SizedBox(height: 16),
-
-                          TextFormField(
-                            controller: razaController,
-                            decoration: const InputDecoration(
-                              labelText: 'Raza',
-                              prefixIcon: Icon(Icons.info_outline),
-                              border: OutlineInputBorder(),
-                            ),
-                            validator: (value) {
-                              if (value == null || value.trim().isEmpty) {
-                                return 'Ingresa la raza';
-                              }
-                              return null;
-                            },
-                          ),
-                          const SizedBox(height: 16),
-
-                          TextFormField(
-                            controller: propietarioController,
-                            decoration: const InputDecoration(
-                              labelText: 'Nombre del propietario',
-                              prefixIcon: Icon(Icons.person),
-                              border: OutlineInputBorder(),
-                            ),
-                            validator: (value) {
-                              if (value == null || value.trim().isEmpty) {
-                                return 'Ingresa el nombre del propietario';
-                              }
-                              return null;
-                            },
-                          ),
-                          const SizedBox(height: 22),
-
-                          SizedBox(
-                            width: double.infinity,
-                            height: 50,
-                            child: ElevatedButton.icon(
-                              onPressed: enviando ? null : registrarMascota,
-                              icon: enviando
-                                  ? const SizedBox(
-                                      width: 20,
-                                      height: 20,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        color: Colors.white,
-                                      ),
-                                    )
-                                  : const Icon(Icons.save),
-                              label: Text(
-                                enviando ? 'Guardando...' : 'Registrar mascota',
-                                style: const TextStyle(fontSize: 16),
-                              ),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF269B79),
-                                foregroundColor: Colors.white,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 25),
-
-                const Text(
-                  'Mascotas registradas',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 10),
-
-                if (cargando)
-                  const Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(20),
-                      child: CircularProgressIndicator(),
-                    ),
-                  )
-                else if (mascotas.isEmpty)
-                  const Card(
-                    child: Padding(
-                      padding: EdgeInsets.all(20),
-                      child: Text(
-                        'Todavía no hay mascotas registradas.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.grey),
-                      ),
-                    ),
-                  )
-                else
-                  ...mascotas.map((mascota) {
-                    final fecha = mascota['fecha_nacimiento'] != null
-                        ? DateTime.tryParse(
-                            mascota['fecha_nacimiento'].toString(),
-                          )
-                        : null;
-
-                    final edad = fecha == null
-                        ? 'No especificada'
-                        : '${DateTime.now().year - fecha.year} años';
-
-                    return Card(
-                      color: Colors.white,
-                      child: ListTile(
-                        leading: const CircleAvatar(
-                          backgroundColor: Color(0xFFE0F2EC),
-                          child: Icon(Icons.pets, color: Color(0xFF269B79)),
-                        ),
-                        title: Text(
-                          mascota['nombre']?.toString() ?? '',
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        subtitle: Text(
-                          '${mascota['especie']} • '
-                          '${mascota['sexo'] ?? 'Sin especificar'} • '
-                          '${mascota['raza'] ?? 'Sin raza'}\n'
-                          'Edad: $edad\n'
-                          'Propietario: '
-                          '${mascota['propietario'] ?? 'No especificado'}',
-                        ),
-                        isThreeLine: true,
-                      ),
-                    );
-                  }),
-              ],
+      body: RefreshIndicator(
+        color: verde,
+        onRefresh: cargarMascotas,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(18, 20, 18, 30),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 650),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _encabezado(),
+                  const SizedBox(height: 25),
+                  _tituloSeccion(Icons.edit_note, 'Datos de tu mascota'),
+                  const SizedBox(height: 14),
+                  _formulario(),
+                  const SizedBox(height: 28),
+                  _seccionMascotas(),
+                ],
+              ),
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _encabezado() {
+    return Container(
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF17623F), Color(0xFF248454)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: verde.withValues(alpha: 0.18),
+            blurRadius: 16,
+            offset: const Offset(0, 7),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Registro de mascotas',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 9),
+                Text(
+                  'Registra a tu compañero y mantén '
+                  'su información organizada para cuidar '
+                  'mejor de su salud.',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.9),
+                    fontSize: 13,
+                    height: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 7,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.16),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Text(
+                    'Cada mascota es especial',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          Container(
+            width: 75,
+            height: 75,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.15),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.pets, color: Colors.white, size: 42),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _tituloSeccion(IconData icono, String titulo) {
+    return Row(
+      children: [
+        Icon(icono, color: verde, size: 23),
+        const SizedBox(width: 9),
+        Text(
+          titulo,
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF26352B),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _formulario() {
+    return Container(
+      padding: const EdgeInsets.all(19),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(21),
+        border: Border.all(color: const Color(0xFFE8EEE9)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.035),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          children: [
+            _campoTexto(
+              controller: nombreController,
+              etiqueta: 'Nombre de la mascota',
+              icono: Icons.pets_outlined,
+              mensaje: 'Ingresa el nombre de la mascota',
+            ),
+            const SizedBox(height: 16),
+            _campoSelector(
+              etiqueta: 'Especie',
+              icono: Icons.category_outlined,
+              valor: especieSeleccionada,
+              opciones: ['Perro', 'Gato', 'Otro'],
+              onChanged: (value) {
+                setState(() {
+                  especieSeleccionada = value!;
+                });
+              },
+            ),
+            const SizedBox(height: 16),
+            _campoSelector(
+              etiqueta: 'Sexo',
+              icono: Icons.wc_outlined,
+              valor: sexoSeleccionado,
+              opciones: ['Macho', 'Hembra'],
+              onChanged: (value) {
+                setState(() {
+                  sexoSeleccionado = value!;
+                });
+              },
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: edadController,
+              keyboardType: TextInputType.number,
+              decoration: _decoracion(
+                'Edad en años',
+                Icons.cake_outlined,
+                hint: 'Ej. 2',
+              ),
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Ingresa la edad';
+                }
+
+                final edad = int.tryParse(value.trim());
+
+                if (edad == null || edad < 0 || edad > 40) {
+                  return 'Ingresa una edad entre 0 y 40 años';
+                }
+
+                return null;
+              },
+            ),
+            const SizedBox(height: 16),
+            _campoTexto(
+              controller: razaController,
+              etiqueta: 'Raza',
+              icono: Icons.info_outline,
+              mensaje: 'Ingresa la raza',
+            ),
+            const SizedBox(height: 16),
+            _campoTexto(
+              controller: propietarioController,
+              etiqueta: 'Nombre del propietario',
+              icono: Icons.person_outline,
+              mensaje: 'Ingresa el nombre del propietario',
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              height: 53,
+              child: ElevatedButton.icon(
+                onPressed: enviando ? null : registrarMascota,
+                icon: enviando
+                    ? const SizedBox(
+                        width: 19,
+                        height: 19,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Icon(Icons.save_outlined),
+                label: Text(
+                  enviando ? 'Guardando...' : 'Registrar mascota',
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: verde,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(13),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  InputDecoration _decoracion(String etiqueta, IconData icono, {String? hint}) {
+    return InputDecoration(
+      labelText: etiqueta,
+      hintText: hint,
+      prefixIcon: Icon(icono, color: verde),
+      filled: true,
+      fillColor: const Color(0xFFFAFCFA),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 17),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(13),
+        borderSide: const BorderSide(color: Color(0xFFE1E9E2)),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(13),
+        borderSide: const BorderSide(color: Color(0xFFE1E9E2)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(13),
+        borderSide: const BorderSide(color: verde, width: 1.5),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(13),
+        borderSide: const BorderSide(color: Colors.redAccent),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(13),
+        borderSide: const BorderSide(color: Colors.redAccent, width: 1.5),
+      ),
+    );
+  }
+
+  Widget _campoTexto({
+    required TextEditingController controller,
+    required String etiqueta,
+    required IconData icono,
+    required String mensaje,
+  }) {
+    return TextFormField(
+      controller: controller,
+      decoration: _decoracion(etiqueta, icono),
+      validator: (value) {
+        if (value == null || value.trim().isEmpty) {
+          return mensaje;
+        }
+        return null;
+      },
+    );
+  }
+
+  Widget _campoSelector({
+    required String etiqueta,
+    required IconData icono,
+    required String valor,
+    required List<String> opciones,
+    required ValueChanged<String?> onChanged,
+  }) {
+    return DropdownButtonFormField<String>(
+      initialValue: valor,
+      isExpanded: true,
+      decoration: _decoracion(etiqueta, icono),
+      items: opciones.map((opcion) {
+        return DropdownMenuItem(value: opcion, child: Text(opcion));
+      }).toList(),
+      onChanged: onChanged,
+    );
+  }
+
+  Widget _seccionMascotas() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: _tituloSeccion(Icons.pets_outlined, 'Mis mascotas'),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
+              decoration: BoxDecoration(
+                color: verdeClaro,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                '${mascotas.length} registradas',
+                style: const TextStyle(
+                  color: verde,
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 14),
+        if (cargando)
+          const Center(
+            child: Padding(
+              padding: EdgeInsets.all(30),
+              child: CircularProgressIndicator(color: verde),
+            ),
+          )
+        else if (mascotas.isEmpty)
+          _estadoVacio()
+        else
+          ...mascotas.map(_tarjetaMascota),
+      ],
+    );
+  }
+
+  Widget _tarjetaMascota(Map<String, dynamic> mascota) {
+    final edad = calcularEdad(mascota['fecha_nacimiento']);
+
+    final especie = mascota['especie']?.toString() ?? 'Sin especie';
+    final sexo = mascota['sexo']?.toString() ?? 'Sin especificar';
+    final raza = mascota['raza']?.toString() ?? 'Sin raza';
+    final propietario = mascota['propietario']?.toString() ?? 'No especificado';
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 13),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFE8EEE9)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 54,
+            height: 54,
+            decoration: BoxDecoration(
+              color: verdeClaro,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Icon(
+              especie.toLowerCase() == 'gato'
+                  ? Icons.pets
+                  : Icons.pets_outlined,
+              color: verde,
+              size: 29,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  mascota['nombre']?.toString() ?? '',
+                  style: const TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF26352B),
+                  ),
+                ),
+                const SizedBox(height: 7),
+                Text(
+                  '$especie • $sexo',
+                  style: const TextStyle(
+                    color: verde,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 9),
+                _datoMascota(Icons.info_outline, 'Raza: $raza'),
+                const SizedBox(height: 5),
+                _datoMascota(
+                  Icons.cake_outlined,
+                  'Edad: ${edad == null ? 'No especificada' : '$edad años'}',
+                ),
+                const SizedBox(height: 5),
+                _datoMascota(Icons.person_outline, 'Propietario: $propietario'),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _datoMascota(IconData icono, String texto) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icono, size: 14, color: Colors.grey),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(
+            texto,
+            style: const TextStyle(
+              color: Color(0xFF78827A),
+              fontSize: 12,
+              height: 1.4,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _estadoVacio() {
+    return Container(
+      padding: const EdgeInsets.all(25),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFE8EEE9)),
+      ),
+      child: const Column(
+        children: [
+          Icon(Icons.pets_outlined, size: 43, color: verde),
+          SizedBox(height: 12),
+          Text(
+            'Todavía no tienes mascotas registradas.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF526057),
+            ),
+          ),
+          SizedBox(height: 5),
+          Text(
+            'Completa el formulario para agregar tu primera mascota.',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 12, color: Colors.grey),
+          ),
+        ],
       ),
     );
   }

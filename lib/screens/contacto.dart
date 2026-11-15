@@ -1,8 +1,9 @@
-
 import 'package:flutter/material.dart';
 
 class ContactoScreen extends StatelessWidget {
-  const ContactoScreen({super.key});
+  final VoidCallback? onOpenMenu;
+
+  const ContactoScreen({super.key, this.onOpenMenu});
 
   static const Color verde = Color(0xFF17623F);
   static const Color verdeClaro = Color(0xFFE8F5ED);
@@ -12,6 +13,13 @@ class ContactoScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: const Color(0xFFF7FAF6),
       appBar: AppBar(
+        leading: onOpenMenu == null
+            ? null
+            : IconButton(
+                tooltip: 'Abrir menú',
+                icon: const Icon(Icons.menu),
+                onPressed: onOpenMenu,
+              ),
         title: const Text('Contacto'),
         backgroundColor: verde,
         foregroundColor: Colors.white,
@@ -33,11 +41,7 @@ class ContactoScreen extends StatelessWidget {
                   CircleAvatar(
                     radius: 38,
                     backgroundColor: Colors.white,
-                    child: Icon(
-                      Icons.pets,
-                      color: verde,
-                      size: 45,
-                    ),
+                    child: Icon(Icons.pets, color: verde, size: 45),
                   ),
                   SizedBox(height: 15),
                   Text(
@@ -51,10 +55,7 @@ class ContactoScreen extends StatelessWidget {
                   SizedBox(height: 8),
                   Text(
                     'Cuidamos a quienes más quieres',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                    ),
+                    style: TextStyle(color: Colors.white, fontSize: 14),
                   ),
                 ],
               ),
@@ -122,10 +123,7 @@ class ContactoScreen extends StatelessWidget {
                     'Estamos aquí para ayudarte con el cuidado '
                     'y bienestar de tu mascota. Consulta nuestros '
                     'servicios o solicita una cita veterinaria.',
-                    style: TextStyle(
-                      color: Colors.black87,
-                      height: 1.5,
-                    ),
+                    style: TextStyle(color: Colors.black87, height: 1.5),
                   ),
                 ],
               ),
@@ -136,10 +134,7 @@ class ContactoScreen extends StatelessWidget {
             const Center(
               child: Text(
                 'PetCare Santa Cruz © 2026',
-                style: TextStyle(
-                  color: Colors.black54,
-                  fontSize: 12,
-                ),
+                style: TextStyle(color: Colors.black54, fontSize: 12),
               ),
             ),
           ],
@@ -148,11 +143,7 @@ class ContactoScreen extends StatelessWidget {
     );
   }
 
-  Widget _informacion(
-    IconData icono,
-    String titulo,
-    String descripcion,
-  ) {
+  Widget _informacion(IconData icono, String titulo, String descripcion) {
     return Card(
       color: Colors.white,
       margin: const EdgeInsets.only(bottom: 12),

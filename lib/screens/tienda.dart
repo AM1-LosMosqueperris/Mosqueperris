@@ -1,8 +1,9 @@
-
 import 'package:flutter/material.dart';
 
 class TiendaScreen extends StatelessWidget {
-  const TiendaScreen({super.key});
+  final VoidCallback? onOpenMenu;
+
+  const TiendaScreen({super.key, this.onOpenMenu});
 
   static const Color verde = Color(0xFF17623F);
   static const Color verdeClaro = Color(0xFFE8F5ED);
@@ -12,6 +13,13 @@ class TiendaScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: const Color(0xFFF7FAF6),
       appBar: AppBar(
+        leading: onOpenMenu == null
+            ? null
+            : IconButton(
+                tooltip: 'Abrir menú',
+                icon: const Icon(Icons.menu),
+                onPressed: onOpenMenu,
+              ),
         title: const Text('Tienda'),
         backgroundColor: verde,
         foregroundColor: Colors.white,
@@ -120,10 +128,7 @@ class TiendaScreen extends StatelessWidget {
             const Center(
               child: Text(
                 'Precios referenciales. Consulta disponibilidad.',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.black54,
-                ),
+                style: TextStyle(fontSize: 12, color: Colors.black54),
               ),
             ),
           ],
@@ -166,30 +171,20 @@ class _Producto extends StatelessWidget {
                   color: color,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(
-                  icono,
-                  size: 55,
-                  color: const Color(0xFF17623F),
-                ),
+                child: Icon(icono, size: 55, color: const Color(0xFF17623F)),
               ),
             ),
             const SizedBox(height: 10),
             Text(
               categoria,
-              style: const TextStyle(
-                fontSize: 11,
-                color: Colors.black54,
-              ),
+              style: const TextStyle(fontSize: 11, color: Colors.black54),
             ),
             const SizedBox(height: 4),
             Text(
               nombre,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 13,
-              ),
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
             ),
             const SizedBox(height: 7),
             Text(

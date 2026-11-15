@@ -15,6 +15,9 @@ import 'screens/bienvenida.dart';
 import 'screens/consultas.dart';
 import 'screens/login.dart';
 import 'screens/nueva_password.dart';
+import 'screens/panel_veterinario.dart';
+import 'screens/panel_administrador.dart';
+import 'screens/notificaciones.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -101,9 +104,10 @@ class _PetCareAppState extends State<PetCareApp> {
       ),
       home: const BienvenidaScreen(),
       routes: {
-        '/app': (context) => const PetCareNavigation(initialIndex: 2),
+        '/app': (context) => const RoleRouterScreen(),
         '/login': (context) => const LoginScreen(),
         '/nueva-password': (context) => const NuevaPasswordScreen(),
+        '/servicios-publicos': (context) => const ServiciosScreen(),
       },
       onUnknownRoute: (settings) {
         return MaterialPageRoute(builder: (context) => const LoginScreen());
@@ -122,6 +126,8 @@ class PetCareNavigation extends StatefulWidget {
 }
 
 class _PetCareNavigationState extends State<PetCareNavigation> {
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
   int selectedIndex = 0;
 
   String? servicioPendiente;
@@ -133,16 +139,27 @@ class _PetCareNavigationState extends State<PetCareNavigation> {
   }
 
   List<Widget> get screens => [
-    InicioScreen(onNavigate: cambiarPantalla),
-    const RegistroMascotasScreen(),
-    ServiciosScreen(onSolicitarServicio: solicitarServicio),
-    ReservasCitasScreen(servicioInicial: servicioPendiente),
-    const ControlVacunasScreen(),
-    const HistorialScreen(),
-    const TiendaScreen(),
-    const ContactoScreen(),
-    const ConsultasScreen(),
+    InicioScreen(onNavigate: cambiarPantalla, onOpenMenu: abrirMenu),
+    RegistroMascotasScreen(onOpenMenu: abrirMenu),
+    ServiciosScreen(
+      onSolicitarServicio: solicitarServicio,
+      onOpenMenu: abrirMenu,
+    ),
+    ReservasCitasScreen(
+      servicioInicial: servicioPendiente,
+      onOpenMenu: abrirMenu,
+    ),
+    ControlVacunasScreen(onOpenMenu: abrirMenu),
+    HistorialScreen(onOpenMenu: abrirMenu),
+    TiendaScreen(onOpenMenu: abrirMenu),
+    ContactoScreen(onOpenMenu: abrirMenu),
+    ConsultasScreen(onOpenMenu: abrirMenu),
+    NotificacionesScreen(onOpenMenu: abrirMenu),
   ];
+
+  void abrirMenu() {
+    _scaffoldKey.currentState?.openDrawer();
+  }
 
   void cambiarPantalla(int index) {
     setState(() {
@@ -166,41 +183,123 @@ class _PetCareNavigationState extends State<PetCareNavigation> {
     cambiarPantalla(index);
   }
 
+  Future<void> _cerrarSesion() async {
+    Navigator.pop(context);
+
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Cerrar sesión'),
+          content: const Text('¿Estás seguro de que deseas cerrar tu sesión?'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(dialogContext, false);
+              },
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () {
+                Navigator.pop(dialogContext, true);
+              },
+              child: const Text('Cerrar sesión'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmar != true || !mounted) return;
+
+    try {
+      await Supabase.instance.client.auth.signOut();
+
+      if (!mounted) return;
+
+      Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('No se pudo cerrar sesión: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Widget _encabezadoUsuario() {
+    final usuario = Supabase.instance.client.auth.currentUser;
+
+    return FutureBuilder<Map<String, dynamic>?>(
+      future: usuario == null
+          ? Future.value(null)
+          : Supabase.instance.client
+                .from('perfiles')
+                .select('nombre')
+                .eq('id', usuario.id)
+                .maybeSingle(),
+      builder: (context, snapshot) {
+        final nombrePerfil = snapshot.data?['nombre']?.toString();
+
+        final nombre = nombrePerfil != null && nombrePerfil.trim().isNotEmpty
+            ? nombrePerfil
+            : 'Cliente PetCare';
+
+        final correo = usuario?.email ?? '';
+
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.fromLTRB(20, 55, 20, 25),
+          color: const Color(0xFF17623F),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const CircleAvatar(
+                radius: 30,
+                backgroundColor: Colors.white,
+                child: Icon(Icons.pets, size: 35, color: Color(0xFF17623F)),
+              ),
+              const SizedBox(height: 15),
+              Text(
+                nombre,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 5),
+              Text(
+                correo,
+                style: const TextStyle(color: Colors.white70, fontSize: 13),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Cuidamos a quienes más quieres',
+                style: TextStyle(color: Colors.white70, fontSize: 12),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      key: _scaffoldKey,
       drawer: Drawer(
         child: Column(
           children: [
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.fromLTRB(20, 55, 20, 25),
-              color: const Color(0xFF17623F),
-              child: const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  CircleAvatar(
-                    radius: 30,
-                    backgroundColor: Colors.white,
-                    child: Icon(Icons.pets, size: 35, color: Color(0xFF17623F)),
-                  ),
-                  SizedBox(height: 15),
-                  Text(
-                    'PetCare Santa Cruz',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  SizedBox(height: 5),
-                  Text(
-                    'Cuidamos a quienes más quieres',
-                    style: TextStyle(color: Colors.white70),
-                  ),
-                ],
-              ),
-            ),
+            _encabezadoUsuario(),
 
             Expanded(
               child: ListView(
@@ -222,6 +321,7 @@ class _PetCareNavigationState extends State<PetCareNavigation> {
                   _opcionMenu(Icons.store_outlined, 'Tienda', 6),
                   _opcionMenu(Icons.contact_support_outlined, 'Contacto', 7),
                   _opcionMenu(Icons.question_answer_outlined, 'Consultas', 8),
+                  _opcionMenu(Icons.notifications_none, 'Notificaciones', 9),
                 ],
               ),
             ),
@@ -239,17 +339,7 @@ class _PetCareNavigationState extends State<PetCareNavigation> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  onTap: () async {
-                    await Supabase.instance.client.auth.signOut();
-
-                    if (!context.mounted) return;
-
-                    Navigator.pushNamedAndRemoveUntil(
-                      context,
-                      '/login',
-                      (route) => false,
-                    );
-                  },
+                  onTap: _cerrarSesion,
                 ),
 
                 const Padding(
@@ -266,18 +356,6 @@ class _PetCareNavigationState extends State<PetCareNavigation> {
       ),
 
       body: IndexedStack(index: selectedIndex, children: screens),
-
-      floatingActionButton: Builder(
-        builder: (context) => FloatingActionButton.small(
-          backgroundColor: const Color(0xFF17623F),
-          foregroundColor: Colors.white,
-          tooltip: 'Abrir menú',
-          onPressed: () {
-            Scaffold.of(context).openDrawer();
-          },
-          child: const Icon(Icons.menu),
-        ),
-      ),
 
       bottomNavigationBar: NavigationBar(
         selectedIndex: selectedIndex < 5 ? selectedIndex : 0,
@@ -335,6 +413,116 @@ class _PetCareNavigationState extends State<PetCareNavigation> {
       selected: selectedIndex == index,
       selectedTileColor: const Color(0xFFE8F5ED),
       onTap: () => seleccionarDesdeMenu(index),
+    );
+  }
+}
+
+class RoleRouterScreen extends StatefulWidget {
+  const RoleRouterScreen({super.key});
+
+  @override
+  State<RoleRouterScreen> createState() => _RoleRouterScreenState();
+}
+
+class _RoleRouterScreenState extends State<RoleRouterScreen> {
+  late Future<String> rolFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    rolFuture = cargarRol();
+  }
+
+  Future<String> cargarRol() async {
+    final supabase = Supabase.instance.client;
+    final usuario = supabase.auth.currentUser;
+
+    if (usuario == null) {
+      throw Exception('No hay una sesión activa');
+    }
+
+    final perfil = await supabase
+        .from('perfiles')
+        .select('rol')
+        .eq('id', usuario.id)
+        .maybeSingle();
+
+    if (perfil == null) {
+      throw Exception('No se encontró el perfil del usuario');
+    }
+
+    return perfil['rol'].toString();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<String>(
+      future: rolFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(
+              child: CircularProgressIndicator(color: Color(0xFF17623F)),
+            ),
+          );
+        }
+
+        if (snapshot.hasError) {
+          return Scaffold(
+            body: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.error_outline,
+                      color: Colors.red,
+                      size: 50,
+                    ),
+                    const SizedBox(height: 15),
+                    const Text(
+                      'No se pudo verificar tu perfil.',
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 15),
+                    ElevatedButton(
+                      onPressed: () async {
+                        await Supabase.instance.client.auth.signOut();
+
+                        if (!context.mounted) return;
+
+                        Navigator.pushNamedAndRemoveUntil(
+                          context,
+                          '/login',
+                          (route) => false,
+                        );
+                      },
+                      child: const Text('Volver al inicio de sesión'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }
+
+        switch (snapshot.data) {
+          case 'cliente':
+            return const PetCareNavigation(initialIndex: 0);
+
+          case 'veterinario':
+            return const PanelVeterinarioScreen();
+
+          case 'administrador':
+            return const PanelAdministradorScreen();
+
+          default:
+            return const Scaffold(
+              body: Center(child: Text('Rol de usuario no reconocido')),
+            );
+        }
+      },
     );
   }
 }
