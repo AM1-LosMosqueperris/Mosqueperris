@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'package:petcare_santa_cruz/utils/fechas.dart';
+
 class GestionReservasAdminScreen extends StatefulWidget {
   const GestionReservasAdminScreen({super.key});
 
@@ -18,6 +20,8 @@ class _GestionReservasAdminScreenState
   final TextEditingController buscarController = TextEditingController();
 
   List<Map<String, dynamic>> reservas = [];
+  final Set<int> reservasActualizando = {};
+  RealtimeChannel? _canalReservas;
   bool cargando = true;
   String filtroEstado = 'Todas';
 
@@ -28,21 +32,38 @@ class _GestionReservasAdminScreenState
     'Atendida',
     'Cancelada',
   ];
+  void escucharReservas() {
+    _canalReservas = supabase
+        .channel('reservas-administrador')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'reservas',
+          callback: (payload) {
+            cargarReservas(mostrarCarga: false);
+          },
+        )
+        .subscribe();
+  }
 
   @override
   void initState() {
     super.initState();
     cargarReservas();
+    escucharReservas();
   }
 
   @override
   void dispose() {
     buscarController.dispose();
+    if (_canalReservas != null) {
+      supabase.removeChannel(_canalReservas!);
+    }
     super.dispose();
   }
 
-  Future<void> cargarReservas() async {
-    if (mounted) {
+  Future<void> cargarReservas({bool mostrarCarga = true}) async {
+    if (mounted && mostrarCarga) {
       setState(() => cargando = true);
     }
 
@@ -67,6 +88,62 @@ class _GestionReservasAdminScreenState
         ),
       );
     }
+  }
+
+  Future<void> cambiarEstadoReserva(
+    Map<String, dynamic> reserva,
+    String nuevoEstado,
+  ) async {
+    final id = int.parse(reserva['id'].toString());
+
+    setState(() {
+      reservasActualizando.add(id);
+    });
+
+    try {
+      await supabase.rpc(
+        'cambiar_estado_reserva_admin',
+        params: {'p_reserva_id': id, 'p_estado': nuevoEstado},
+      );
+
+      await cargarReservas(mostrarCarga: false);
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Reserva actualizada a: $nuevoEstado'),
+          backgroundColor: verde,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('No se pudo actualizar la reserva: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          reservasActualizando.remove(id);
+        });
+      }
+    }
+  }
+
+  int get totalReservas => reservas.length;
+
+  int contarEstado(String estado) {
+    return reservas
+        .where(
+          (reserva) =>
+              reserva['estado']?.toString().toLowerCase() ==
+              estado.toLowerCase(),
+        )
+        .length;
   }
 
   List<Map<String, dynamic>> get reservasFiltradas {
@@ -118,8 +195,8 @@ class _GestionReservasAdminScreenState
 
     final especie = reserva['especie_mascota'] ?? 'No especificada';
 
-    final fecha = reserva['fecha']?.toString() ?? '';
-    final hora = reserva['hora']?.toString() ?? '';
+    final fecha = Fechas.formatearFecha(reserva['fecha']);
+    final hora = Fechas.formatearHora(reserva['hora']);
 
     showDialog(
       context: context,
@@ -171,6 +248,43 @@ class _GestionReservasAdminScreenState
     );
   }
 
+  Widget tarjetaIndicador({
+    required String titulo,
+    required int cantidad,
+    required IconData icono,
+    required Color color,
+  }) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withValues(alpha: 0.25)),
+        ),
+        child: Column(
+          children: [
+            Icon(icono, color: color, size: 25),
+            const SizedBox(height: 7),
+            Text(
+              '$cantidad',
+              style: TextStyle(
+                fontSize: 21,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+            ),
+            Text(
+              titulo,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 11),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget detalle(String titulo, String valor) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -190,6 +304,8 @@ class _GestionReservasAdminScreenState
 
   Widget tarjetaReserva(Map<String, dynamic> reserva) {
     final estado = reserva['estado']?.toString() ?? 'Sin estado';
+    final id = int.parse(reserva['id'].toString());
+    final actualizando = reservasActualizando.contains(id);
 
     final mascota =
         reserva['nombre_mascota'] ?? reserva['mascota'] ?? 'Sin mascota';
@@ -257,14 +373,78 @@ class _GestionReservasAdminScreenState
               const SizedBox(height: 5),
               Text('Servicio: ${reserva['servicio'] ?? 'No especificado'}'),
               const SizedBox(height: 5),
-              Text('Fecha: ${reserva['fecha']}  |  Hora: ${reserva['hora']}'),
+              Text(
+                'Fecha: ${Fechas.formatearFechaHora(reserva['fecha'], reserva['hora'])}',
+              ),
               const SizedBox(height: 8),
-              const Align(
-                alignment: Alignment.centerRight,
-                child: Text(
-                  'Ver detalles',
-                  style: TextStyle(color: verde, fontWeight: FontWeight.bold),
-                ),
+              const Divider(height: 24),
+
+              Row(
+                children: [
+                  const Text(
+                    'Cambiar estado:',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const Spacer(),
+                  if (actualizando)
+                    const SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: verde,
+                      ),
+                    )
+                  else
+                    PopupMenuButton<String>(
+                      tooltip: 'Cambiar estado',
+                      onSelected: (nuevoEstado) {
+                        cambiarEstadoReserva(reserva, nuevoEstado);
+                      },
+                      itemBuilder: (context) => [
+                        const PopupMenuItem(
+                          value: 'Pendiente',
+                          child: Text('Pendiente'),
+                        ),
+                        const PopupMenuItem(
+                          value: 'Confirmada',
+                          child: Text('Confirmar reserva'),
+                        ),
+                        const PopupMenuItem(
+                          value: 'Atendida',
+                          child: Text('Marcar como atendida'),
+                        ),
+                        const PopupMenuItem(
+                          value: 'Cancelada',
+                          child: Text('Cancelar reserva'),
+                        ),
+                      ],
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: verdeClaro,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'Cambiar',
+                              style: TextStyle(
+                                color: verde,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            SizedBox(width: 5),
+                            Icon(Icons.arrow_drop_down, color: verde),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ],
           ),
@@ -302,6 +482,42 @@ class _GestionReservasAdminScreenState
               child: ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
+                  Row(
+                    children: [
+                      tarjetaIndicador(
+                        titulo: 'Pendientes',
+                        cantidad: contarEstado('Pendiente'),
+                        icono: Icons.pending_actions,
+                        color: Colors.orange,
+                      ),
+                      const SizedBox(width: 8),
+                      tarjetaIndicador(
+                        titulo: 'Confirmadas',
+                        cantidad: contarEstado('Confirmada'),
+                        icono: Icons.event_available,
+                        color: Colors.blue,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      tarjetaIndicador(
+                        titulo: 'Atendidas',
+                        cantidad: contarEstado('Atendida'),
+                        icono: Icons.check_circle,
+                        color: verde,
+                      ),
+                      const SizedBox(width: 8),
+                      tarjetaIndicador(
+                        titulo: 'Canceladas',
+                        cantidad: contarEstado('Cancelada'),
+                        icono: Icons.event_busy,
+                        color: Colors.red,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
                   TextField(
                     controller: buscarController,
                     onChanged: (_) => setState(() {}),

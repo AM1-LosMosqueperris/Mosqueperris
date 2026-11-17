@@ -16,10 +16,24 @@ class _GestionMascotasScreenState extends State<GestionMascotasScreen> {
   final TextEditingController busquedaController = TextEditingController();
 
   List<Map<String, dynamic>> mascotas = [];
+  RealtimeChannel? _canalMascotas;
 
   bool cargando = true;
   String? error;
   String textoBusqueda = '';
+  int contarEspecie(String especie) {
+    return mascotas.where((mascota) {
+      return mascota['especie']?.toString().toLowerCase().trim() ==
+          especie.toLowerCase();
+    }).length;
+  }
+
+  int get otrasEspecies {
+    return mascotas.where((mascota) {
+      final especie = mascota['especie']?.toString().toLowerCase().trim() ?? '';
+      return especie != 'perro' && especie != 'gato';
+    }).length;
+  }
 
   List<Map<String, dynamic>> get mascotasFiltradas {
     if (textoBusqueda.trim().isEmpty) return mascotas;
@@ -46,19 +60,40 @@ class _GestionMascotasScreenState extends State<GestionMascotasScreen> {
   void initState() {
     super.initState();
     cargarMascotas();
+    escucharCambios();
+  }
+
+  void escucharCambios() {
+    _canalMascotas = supabase
+        .channel('mascotas-administrador')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'mascotas',
+          callback: (payload) {
+            cargarMascotas(mostrarCarga: false);
+          },
+        )
+        .subscribe();
   }
 
   @override
   void dispose() {
+    if (_canalMascotas != null) {
+      supabase.removeChannel(_canalMascotas!);
+    }
+
     busquedaController.dispose();
     super.dispose();
   }
 
-  Future<void> cargarMascotas() async {
-    setState(() {
-      cargando = true;
-      error = null;
-    });
+  Future<void> cargarMascotas({bool mostrarCarga = true}) async {
+    if (mounted && mostrarCarga) {
+      setState(() {
+        cargando = true;
+        error = null;
+      });
+    }
 
     try {
       final datos = await supabase.rpc('listar_mascotas_admin');
@@ -71,6 +106,7 @@ class _GestionMascotasScreenState extends State<GestionMascotasScreen> {
             .toList();
 
         cargando = false;
+        error = null;
       });
     } catch (e) {
       debugPrint('ERROR AL CARGAR MASCOTAS: $e');
@@ -89,6 +125,43 @@ class _GestionMascotasScreenState extends State<GestionMascotasScreen> {
       return 'No registrado';
     }
     return valor.toString();
+  }
+
+  Widget tarjetaIndicador({
+    required String titulo,
+    required int cantidad,
+    required IconData icono,
+    required Color color,
+  }) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withValues(alpha: 0.25)),
+        ),
+        child: Column(
+          children: [
+            Icon(icono, color: color, size: 25),
+            const SizedBox(height: 7),
+            Text(
+              '$cantidad',
+              style: TextStyle(
+                fontSize: 21,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+            ),
+            Text(
+              titulo,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 11),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget tarjetaMascota(Map<String, dynamic> mascota) {
@@ -257,6 +330,42 @@ class _GestionMascotasScreenState extends State<GestionMascotasScreen> {
                         ),
                       ],
                     ),
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      tarjetaIndicador(
+                        titulo: 'Total',
+                        cantidad: mascotas.length,
+                        icono: Icons.pets,
+                        color: verde,
+                      ),
+                      const SizedBox(width: 8),
+                      tarjetaIndicador(
+                        titulo: 'Perros',
+                        cantidad: contarEspecie('perro'),
+                        icono: Icons.pets,
+                        color: Colors.blue,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      tarjetaIndicador(
+                        titulo: 'Gatos',
+                        cantidad: contarEspecie('gato'),
+                        icono: Icons.pets,
+                        color: Colors.orange,
+                      ),
+                      const SizedBox(width: 8),
+                      tarjetaIndicador(
+                        titulo: 'Otras especies',
+                        cantidad: otrasEspecies,
+                        icono: Icons.cruelty_free,
+                        color: Colors.purple,
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 20),
                   TextField(

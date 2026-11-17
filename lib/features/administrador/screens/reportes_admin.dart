@@ -13,6 +13,7 @@ class ReportesAdminScreen extends StatefulWidget {
 class _ReportesAdminScreenState extends State<ReportesAdminScreen> {
   static const Color verde = Color(0xFF17623F);
   final supabase = Supabase.instance.client;
+  RealtimeChannel? _canalReportes;
 
   bool cargando = true;
   String? error;
@@ -33,19 +34,67 @@ class _ReportesAdminScreenState extends State<ReportesAdminScreen> {
     Colors.red,
     Colors.indigo,
   ];
+  @override
+  void dispose() {
+    if (_canalReportes != null) {
+      supabase.removeChannel(_canalReportes!);
+    }
+
+    super.dispose();
+  }
 
   @override
   void initState() {
     super.initState();
     cargarReportes();
+    _escucharReportes();
   }
 
-  Future<void> cargarReportes() async {
-    setState(() {
-      cargando = true;
-      error = null;
-    });
+  void _escucharReportes() {
+    _canalReportes = supabase
+        .channel('reportes-administrador')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'perfiles',
+          callback: (payload) {
+            cargarReportes(mostrarCarga: false);
+          },
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'mascotas',
+          callback: (payload) {
+            cargarReportes(mostrarCarga: false);
+          },
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'reservas',
+          callback: (payload) {
+            cargarReportes(mostrarCarga: false);
+          },
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'historial_medico',
+          callback: (payload) {
+            cargarReportes(mostrarCarga: false);
+          },
+        )
+        .subscribe();
+  }
 
+  Future<void> cargarReportes({bool mostrarCarga = true}) async {
+    if (mostrarCarga) {
+      setState(() {
+        cargando = true;
+        error = null;
+      });
+    }
     try {
       final respuesta = await supabase.rpc('obtener_reportes_admin');
 

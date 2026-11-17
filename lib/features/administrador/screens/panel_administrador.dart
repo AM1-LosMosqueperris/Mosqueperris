@@ -6,6 +6,8 @@ import 'package:petcare_santa_cruz/features/administrador/screens/gestion_mascot
 import 'package:petcare_santa_cruz/features/administrador/screens/gestion_reservas_admin.dart';
 import 'package:petcare_santa_cruz/features/administrador/screens/reportes_admin.dart';
 import 'package:petcare_santa_cruz/features/notificaciones/screens/notificaciones.dart';
+import 'package:petcare_santa_cruz/features/administrador/screens/gestion_consultas_admin.dart';
+import 'package:petcare_santa_cruz/features/administrador/screens/gestion_productos.dart';
 
 class PanelAdministradorScreen extends StatefulWidget {
   const PanelAdministradorScreen({super.key});
@@ -30,7 +32,14 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
   int reservasAtendidas = 0;
   int notificacionesNoLeidas = 0;
 
+  int selectedIndex = 0;
+
+  bool cargando = true;
+  String? error;
+  String textoBusqueda = '';
+
   RealtimeChannel? _canalNotificaciones;
+  RealtimeChannel? _canalResumen;
 
   int get totalClientes => usuarios.where((u) => u['rol'] == 'cliente').length;
 
@@ -39,10 +48,6 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
 
   int get totalAdministradores =>
       usuarios.where((u) => u['rol'] == 'administrador').length;
-
-  bool cargando = true;
-  String? error;
-  String textoBusqueda = '';
 
   List<Map<String, dynamic>> get usuariosFiltrados {
     if (textoBusqueda.trim().isEmpty) return usuarios;
@@ -64,13 +69,72 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
   void initState() {
     super.initState();
     cargarUsuarios();
+    _escucharResumen();
     _cargarNotificacionesAdmin();
     _escucharNotificacionesAdmin();
   }
 
+  @override
+  void dispose() {
+    busquedaController.dispose();
+
+    if (_canalResumen != null) {
+      supabase.removeChannel(_canalResumen!);
+    }
+
+    if (_canalNotificaciones != null) {
+      supabase.removeChannel(_canalNotificaciones!);
+    }
+
+    super.dispose();
+  }
+
+  void cambiarSeccion(int index) {
+    setState(() {
+      selectedIndex = index;
+    });
+
+    if (index == 2) {
+      cargarUsuarios(mostrarCarga: false);
+    }
+
+    if (index == 0) {
+      cargarEstadisticas();
+    }
+  }
+
+  void _escucharResumen() {
+    _canalResumen = supabase
+        .channel('resumen-administrador')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'perfiles',
+          callback: (payload) {
+            cargarUsuarios(mostrarCarga: false);
+          },
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'mascotas',
+          callback: (payload) {
+            cargarEstadisticas();
+          },
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'reservas',
+          callback: (payload) {
+            cargarEstadisticas();
+          },
+        )
+        .subscribe();
+  }
+
   Future<void> _cargarNotificacionesAdmin() async {
     final usuario = supabase.auth.currentUser;
-
     if (usuario == null) return;
 
     try {
@@ -92,7 +156,6 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
 
   void _escucharNotificacionesAdmin() {
     final usuario = supabase.auth.currentUser;
-
     if (usuario == null) return;
 
     _canalNotificaciones = supabase
@@ -132,24 +195,15 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
         .subscribe();
   }
 
-  @override
-  void dispose() {
-    busquedaController.dispose();
-
-    if (_canalNotificaciones != null) {
-      supabase.removeChannel(_canalNotificaciones!);
-    }
-
-    super.dispose();
-  }
-
-  Future<void> cargarUsuarios() async {
+  Future<void> cargarUsuarios({bool mostrarCarga = true}) async {
     if (!mounted) return;
 
-    setState(() {
-      cargando = true;
-      error = null;
-    });
+    if (mostrarCarga) {
+      setState(() {
+        cargando = true;
+        error = null;
+      });
+    }
 
     try {
       final datos = await supabase.rpc('listar_perfiles_admin');
@@ -162,6 +216,7 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
             .toList();
 
         cargando = false;
+        error = null;
       });
 
       await cargarEstadisticas();
@@ -370,24 +425,278 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
     Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
   }
 
+  Future<void> abrirNotificaciones() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const NotificacionesScreen()),
+    );
+
+    if (!mounted) return;
+    _cargarNotificacionesAdmin();
+  }
+
   void abrirPantalla(Widget pantalla) {
     Navigator.push(context, MaterialPageRoute(builder: (_) => pantalla));
   }
 
+  // --------------------------------------------------
+  // NAVEGACIÓN PRINCIPAL
+  // --------------------------------------------------
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: fondo,
+      appBar: AppBar(
+        elevation: 0,
+        backgroundColor: verde,
+        foregroundColor: Colors.white,
+        title: Row(
+          children: [
+            const Icon(Icons.pets_rounded, size: 25),
+            const SizedBox(width: 10),
+            Text(
+              selectedIndex == 0
+                  ? 'PetCare Administrador'
+                  : selectedIndex == 1
+                  ? 'Gestión'
+                  : selectedIndex == 2
+                  ? 'Usuarios'
+                  : 'Reportes',
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+        actions: [
+          IconButton(
+            tooltip: 'Notificaciones',
+            onPressed: abrirNotificaciones,
+            icon: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                const Icon(Icons.notifications_outlined),
+                if (notificacionesNoLeidas > 0)
+                  Positioned(
+                    right: -6,
+                    top: -6,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: const BoxDecoration(
+                        color: Colors.red,
+                        shape: BoxShape.circle,
+                      ),
+                      constraints: const BoxConstraints(
+                        minWidth: 18,
+                        minHeight: 18,
+                      ),
+                      child: Text(
+                        notificacionesNoLeidas > 99
+                            ? '99+'
+                            : '$notificacionesNoLeidas',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          IconButton(
+            tooltip: 'Actualizar',
+            onPressed: () {
+              if (selectedIndex == 2) {
+                cargarUsuarios();
+              } else {
+                cargarEstadisticas();
+              }
+            },
+            icon: const Icon(Icons.refresh_rounded),
+          ),
+          IconButton(
+            tooltip: 'Cerrar sesión',
+            onPressed: cerrarSesion,
+            icon: const Icon(Icons.logout_rounded),
+          ),
+          const SizedBox(width: 5),
+        ],
+      ),
+      body: IndexedStack(
+        index: selectedIndex,
+        children: [inicioPage(), gestionPage(), usuariosPage(), reportesPage()],
+      ),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: selectedIndex,
+        onDestinationSelected: cambiarSeccion,
+        backgroundColor: Colors.white,
+        indicatorColor: verdeClaro,
+        elevation: 3,
+        height: 68,
+        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.home_outlined),
+            selectedIcon: Icon(Icons.home_rounded, color: verde),
+            label: 'Inicio',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.grid_view_outlined),
+            selectedIcon: Icon(Icons.grid_view_rounded, color: verde),
+            label: 'Gestión',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.people_outline_rounded),
+            selectedIcon: Icon(Icons.people_rounded, color: verde),
+            label: 'Usuarios',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.bar_chart_outlined),
+            selectedIcon: Icon(Icons.bar_chart_rounded, color: verde),
+            label: 'Reportes',
+          ),
+        ],
+      ),
+    );
+  }
+
+  // --------------------------------------------------
+  // INICIO
+  // --------------------------------------------------
+
+  Widget inicioPage() {
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 900),
+        child: RefreshIndicator(
+          color: verde,
+          onRefresh: () async {
+            await cargarUsuarios();
+          },
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(18, 20, 18, 30),
+            children: [
+              encabezado(),
+              const SizedBox(height: 24),
+              tituloSeccion(
+                'Resumen del sistema',
+                'Indicadores generales de PetCare.',
+              ),
+              const SizedBox(height: 14),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final columnas = constraints.maxWidth > 600 ? 3 : 2;
+
+                  return GridView.count(
+                    crossAxisCount: columnas,
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    crossAxisSpacing: 11,
+                    mainAxisSpacing: 11,
+                    childAspectRatio: columnas == 3 ? 1.35 : 1.15,
+                    children: [
+                      tarjetaEstadistica(
+                        'Usuarios',
+                        usuarios.length,
+                        Icons.people_alt_rounded,
+                        verde,
+                      ),
+                      tarjetaEstadistica(
+                        'Clientes',
+                        totalClientes,
+                        Icons.person_rounded,
+                        Colors.blue,
+                      ),
+                      tarjetaEstadistica(
+                        'Veterinarios',
+                        totalVeterinarios,
+                        Icons.medical_services_rounded,
+                        Colors.orange,
+                      ),
+                      tarjetaEstadistica(
+                        'Administradores',
+                        totalAdministradores,
+                        Icons.admin_panel_settings_rounded,
+                        Colors.purple,
+                      ),
+                      tarjetaEstadistica(
+                        'Mascotas',
+                        totalMascotas,
+                        Icons.pets_rounded,
+                        Colors.teal,
+                      ),
+                      tarjetaEstadistica(
+                        'Reservas',
+                        totalReservas,
+                        Icons.calendar_month_rounded,
+                        Colors.deepOrange,
+                      ),
+                      tarjetaEstadistica(
+                        'Atendidas',
+                        reservasAtendidas,
+                        Icons.medical_information_rounded,
+                        Colors.indigo,
+                      ),
+                    ],
+                  );
+                },
+              ),
+              const SizedBox(height: 26),
+              tituloSeccion(
+                'Accesos rápidos',
+                'Entra directamente a las funciones principales.',
+              ),
+              const SizedBox(height: 14),
+              accesoRapido(
+                'Administrar servicios',
+                'Configura los servicios disponibles.',
+                Icons.medical_services_rounded,
+                () => cambiarSeccion(1),
+              ),
+              accesoRapido(
+                'Gestionar reservas',
+                'Consulta y administra las reservas.',
+                Icons.calendar_month_rounded,
+                () => abrirPantalla(const GestionReservasAdminScreen()),
+              ),
+              accesoRapido(
+                'Gestionar usuarios',
+                'Consulta cuentas y administra sus roles.',
+                Icons.people_alt_rounded,
+                () => cambiarSeccion(2),
+              ),
+              accesoRapido(
+                'Consultar reportes',
+                'Revisa los indicadores y gráficos.',
+                Icons.bar_chart_rounded,
+                () => abrirPantalla(const ReportesAdminScreen()),
+              ),
+              const SizedBox(height: 15),
+              tarjetaConsejo(),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget encabezado() {
     return Container(
-      padding: const EdgeInsets.all(22),
+      padding: const EdgeInsets.all(23),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [verde, Color(0xFF258456)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(23),
         boxShadow: [
           BoxShadow(
             color: verde.withValues(alpha: 0.18),
-            blurRadius: 14,
+            blurRadius: 15,
             offset: const Offset(0, 7),
           ),
         ],
@@ -403,25 +712,45 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
                   style: TextStyle(
                     color: Colors.white70,
                     fontSize: 11,
-                    letterSpacing: 1.3,
+                    letterSpacing: 1.4,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                const SizedBox(height: 9),
+                const SizedBox(height: 10),
                 const Text(
-                  'Bienvenido, administrador',
+                  '¡Bienvenido!',
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 20,
+                    fontSize: 25,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 const SizedBox(height: 7),
                 Text(
-                  '${usuarios.length} usuarios registrados',
+                  'Administra y supervisa tu aplicación PetCare.',
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.9),
+                    height: 1.5,
                     fontSize: 13,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 11,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.16),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    '${usuarios.length} usuarios registrados',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ],
@@ -437,7 +766,7 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
             child: const Icon(
               Icons.admin_panel_settings_rounded,
               color: Colors.white,
-              size: 38,
+              size: 39,
             ),
           ),
         ],
@@ -473,7 +802,7 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
     Color color,
   ) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(17),
@@ -489,19 +818,18 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
-        mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            padding: const EdgeInsets.all(7),
+            padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.11),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(11),
             ),
-            child: Icon(icono, color: color, size: 21),
+            child: Icon(icono, color: color, size: 22),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 9),
           Text(
-            cantidad.toString(),
+            '$cantidad',
             maxLines: 1,
             style: const TextStyle(
               fontSize: 24,
@@ -518,7 +846,6 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
               fontSize: 11,
               color: Colors.black54,
               fontWeight: FontWeight.w500,
-              height: 1.2,
             ),
           ),
         ],
@@ -526,75 +853,460 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
     );
   }
 
-  Widget tarjetaAcceso({
-    required String titulo,
-    required String descripcion,
-    required IconData icono,
-    required VoidCallback onTap,
-  }) {
+  Widget accesoRapido(
+    String titulo,
+    String descripcion,
+    IconData icono,
+    VoidCallback onTap,
+  ) {
+    return tarjetaAcceso(
+      titulo: titulo,
+      descripcion: descripcion,
+      icono: icono,
+      onTap: onTap,
+    );
+  }
+
+  Widget tarjetaConsejo() {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(17),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFFFFF8E9),
         borderRadius: BorderRadius.circular(17),
-        border: Border.all(color: const Color(0xFFE8EEE9)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 8,
-            offset: const Offset(0, 3),
+        border: Border.all(color: const Color(0xFFF3E5C5)),
+      ),
+      child: const Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            Icons.lightbulb_outline_rounded,
+            color: Color(0xFF9A6A22),
+            size: 23,
+          ),
+          SizedBox(width: 11),
+          Expanded(
+            child: Text(
+              'Mantén actualizada la información de la aplicación y revisa periódicamente las actividades del sistema.',
+              style: TextStyle(
+                color: Color(0xFF76551F),
+                fontSize: 12,
+                height: 1.5,
+              ),
+            ),
           ),
         ],
       ),
+    );
+  }
+
+  // --------------------------------------------------
+  // GESTIÓN
+  // --------------------------------------------------
+
+  Widget gestionPage() {
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 900),
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(18, 20, 18, 30),
+          children: [
+            encabezadoGestion(),
+            const SizedBox(height: 23),
+            tituloSeccion(
+              'Módulos de administración',
+              'Selecciona el apartado que deseas gestionar.',
+            ),
+            const SizedBox(height: 16),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final columnas = constraints.maxWidth > 600 ? 3 : 2;
+
+                return GridView.count(
+                  crossAxisCount: columnas,
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  crossAxisSpacing: 12,
+                  mainAxisSpacing: 12,
+                  childAspectRatio: columnas == 3 ? 1.05 : 0.95,
+                  children: [
+                    tarjetaModulo(
+                      'Servicios',
+                      'Administra los servicios ofrecidos.',
+                      Icons.medical_services_rounded,
+                      verde,
+                      verdeClaro,
+                      () => abrirPantalla(const GestionServiciosScreen()),
+                    ),
+                    tarjetaModulo(
+                      'Mascotas',
+                      'Consulta las mascotas registradas.',
+                      Icons.pets_rounded,
+                      Colors.teal,
+                      const Color(0xFFE5F5F1),
+                      () => abrirPantalla(const GestionMascotasScreen()),
+                    ),
+                    tarjetaModulo(
+                      'Reservas',
+                      'Revisa las reservas de los clientes.',
+                      Icons.calendar_month_rounded,
+                      Colors.deepOrange,
+                      const Color(0xFFFFEEE5),
+                      () => abrirPantalla(const GestionReservasAdminScreen()),
+                    ),
+                    tarjetaModulo(
+                      'Consultas',
+                      'Revisa los mensajes de los clientes.',
+                      Icons.question_answer_rounded,
+                      Colors.blue,
+                      const Color(0xFFEAF1FC),
+                      () => abrirPantalla(const GestionConsultasAdminScreen()),
+                    ),
+                    tarjetaModulo(
+                      'Productos',
+                      'Administra los productos de la tienda.',
+                      Icons.inventory_2_rounded,
+                      Colors.purple,
+                      const Color(0xFFF2EAFE),
+                      () => abrirPantalla(const GestionProductosScreen()),
+                    ),
+                    tarjetaModulo(
+                      'Reportes',
+                      'Consulta estadísticas y gráficos.',
+                      Icons.bar_chart_rounded,
+                      Colors.brown,
+                      const Color(0xFFF4ECE5),
+                      () => abrirPantalla(const ReportesAdminScreen()),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget encabezadoGestion() {
+    return Container(
+      padding: const EdgeInsets.all(21),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF315B9A), Color(0xFF527DB8)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(21),
+      ),
+      child: const Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'ADMINISTRACIÓN',
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.3,
+                  ),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  'Gestiona PetCare',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                SizedBox(height: 6),
+                Text(
+                  'Accede a los diferentes módulos de la aplicación.',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(width: 12),
+          Icon(Icons.settings_rounded, color: Colors.white, size: 43),
+        ],
+      ),
+    );
+  }
+
+  Widget tarjetaModulo(
+    String titulo,
+    String descripcion,
+    IconData icono,
+    Color color,
+    Color fondoIcono,
+    VoidCallback onTap,
+  ) {
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(18),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(17),
-        child: Padding(
+        borderRadius: BorderRadius.circular(18),
+        child: Container(
           padding: const EdgeInsets.all(15),
-          child: Row(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: const Color(0xFFE8EEE9)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.025),
+                blurRadius: 7,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: verdeClaro,
+                  color: fondoIcono,
                   borderRadius: BorderRadius.circular(13),
                 ),
-                child: Icon(icono, color: verde, size: 25),
+                child: Icon(icono, color: color, size: 26),
               ),
-              const SizedBox(width: 13),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      titulo,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF26372C),
-                        fontSize: 15,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      descripcion,
-                      style: const TextStyle(
-                        color: Colors.black54,
-                        fontSize: 12,
-                        height: 1.3,
-                      ),
-                    ),
-                  ],
+              const SizedBox(height: 13),
+              Text(
+                titulo,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF26372C),
                 ),
               ),
-              const SizedBox(width: 8),
-              const Icon(
-                Icons.arrow_forward_ios_rounded,
-                color: verde,
-                size: 17,
+              const SizedBox(height: 5),
+              Expanded(
+                child: Text(
+                  descripcion,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    height: 1.35,
+                    color: Colors.black54,
+                  ),
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              Align(
+                alignment: Alignment.centerRight,
+                child: Icon(
+                  Icons.arrow_forward_rounded,
+                  color: color,
+                  size: 20,
+                ),
               ),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  // --------------------------------------------------
+  // USUARIOS
+  // --------------------------------------------------
+
+  Widget usuariosPage() {
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 900),
+        child: RefreshIndicator(
+          color: verde,
+          onRefresh: cargarUsuarios,
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(18, 20, 18, 30),
+            children: [
+              encabezadoUsuarios(),
+              const SizedBox(height: 20),
+              resumenRoles(),
+              const SizedBox(height: 23),
+              tituloSeccion(
+                'Directorio de usuarios',
+                'Busca cuentas y administra sus roles.',
+              ),
+              const SizedBox(height: 15),
+              buscadorUsuarios(),
+              const SizedBox(height: 15),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Usuarios registrados',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                      color: Color(0xFF26372C),
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: verdeClaro,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      '${usuariosFiltrados.length} resultados',
+                      style: const TextStyle(
+                        color: verde,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 13),
+              if (cargando)
+                const Padding(
+                  padding: EdgeInsets.only(top: 60),
+                  child: Center(child: CircularProgressIndicator(color: verde)),
+                )
+              else if (error != null)
+                mensajeErrorUsuarios()
+              else if (usuariosFiltrados.isEmpty)
+                mensajeSinUsuarios()
+              else
+                ...usuariosFiltrados.map(tarjetaUsuario),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget encabezadoUsuarios() {
+    return Container(
+      padding: const EdgeInsets.all(21),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF17623F), Color(0xFF258456)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(21),
+      ),
+      child: const Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'CUENTAS Y PERMISOS',
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.3,
+                  ),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  'Gestión de usuarios',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                SizedBox(height: 6),
+                Text(
+                  'Consulta las cuentas y administra sus permisos.',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(width: 12),
+          Icon(Icons.people_alt_rounded, color: Colors.white, size: 43),
+        ],
+      ),
+    );
+  }
+
+  Widget resumenRoles() {
+    return Row(
+      children: [
+        Expanded(
+          child: resumenRol(
+            'Clientes',
+            totalClientes,
+            Colors.blue,
+            Icons.person_rounded,
+          ),
+        ),
+        const SizedBox(width: 9),
+        Expanded(
+          child: resumenRol(
+            'Veterinarios',
+            totalVeterinarios,
+            Colors.orange,
+            Icons.medical_services_rounded,
+          ),
+        ),
+        const SizedBox(width: 9),
+        Expanded(
+          child: resumenRol(
+            'Admins',
+            totalAdministradores,
+            Colors.purple,
+            Icons.admin_panel_settings_rounded,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget resumenRol(String titulo, int cantidad, Color color, IconData icono) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(15),
+        border: Border.all(color: const Color(0xFFE8EEE9)),
+      ),
+      child: Column(
+        children: [
+          Icon(icono, color: color, size: 23),
+          const SizedBox(height: 7),
+          Text(
+            '$cantidad',
+            style: const TextStyle(
+              color: verde,
+              fontSize: 21,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            titulo,
+            style: const TextStyle(color: Colors.black54, fontSize: 10),
+            textAlign: TextAlign.center,
+          ),
+        ],
       ),
     );
   }
@@ -654,6 +1366,13 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: const Color(0xFFE8EEE9)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.025),
+            blurRadius: 7,
+            offset: const Offset(0, 3),
+          ),
+        ],
       ),
       child: Padding(
         padding: const EdgeInsets.all(13),
@@ -747,274 +1466,272 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
     );
   }
 
-  Widget contenidoPrincipal() {
-    return ListView(
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(18, 20, 18, 30),
-      children: [
-        encabezado(),
-
-        const SizedBox(height: 25),
-
-        tituloSeccion(
-          'Resumen del sistema',
-          'Indicadores generales de PetCare',
-        ),
-
-        const SizedBox(height: 14),
-
-        GridView.count(
-          crossAxisCount: 2,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisSpacing: 11,
-          mainAxisSpacing: 11,
-          childAspectRatio: 1.05,
-          children: [
-            tarjetaEstadistica(
-              'Total usuarios',
-              usuarios.length,
-              Icons.people_alt_rounded,
-              verde,
-            ),
-            tarjetaEstadistica(
-              'Clientes',
-              totalClientes,
-              Icons.person_rounded,
-              Colors.blue,
-            ),
-            tarjetaEstadistica(
-              'Veterinarios',
-              totalVeterinarios,
-              Icons.medical_services_rounded,
-              Colors.orange,
-            ),
-            tarjetaEstadistica(
-              'Administradores',
-              totalAdministradores,
-              Icons.admin_panel_settings_rounded,
-              Colors.purple,
-            ),
-            tarjetaEstadistica(
-              'Mascotas registradas',
-              totalMascotas,
-              Icons.pets_rounded,
-              Colors.teal,
-            ),
-            tarjetaEstadistica(
-              'Reservas registradas',
-              totalReservas,
-              Icons.calendar_month_rounded,
-              Colors.deepOrange,
-            ),
-            tarjetaEstadistica(
-              'Consultas atendidas',
-              reservasAtendidas,
-              Icons.medical_information_rounded,
-              Colors.indigo,
-            ),
-          ],
-        ),
-
-        const SizedBox(height: 27),
-
-        tituloSeccion(
-          'Administración',
-          'Gestiona los módulos principales de la aplicación',
-        ),
-
-        const SizedBox(height: 14),
-
-        tarjetaAcceso(
-          titulo: 'Administrar servicios',
-          descripcion: 'Crear, editar, activar o desactivar servicios.',
-          icono: Icons.medical_services_rounded,
-          onTap: () => abrirPantalla(const GestionServiciosScreen()),
-        ),
-
-        tarjetaAcceso(
-          titulo: 'Gestión de mascotas',
-          descripcion: 'Consultar mascotas, propietarios y detalles.',
-          icono: Icons.pets_rounded,
-          onTap: () => abrirPantalla(const GestionMascotasScreen()),
-        ),
-
-        tarjetaAcceso(
-          titulo: 'Gestión de reservas',
-          descripcion: 'Consultar reservas, clientes y estados.',
-          icono: Icons.calendar_month_rounded,
-          onTap: () => abrirPantalla(const GestionReservasAdminScreen()),
-        ),
-
-        tarjetaAcceso(
-          titulo: 'Reportes del sistema',
-          descripcion: 'Visualizar estadísticas y gráficos del sistema.',
-          icono: Icons.bar_chart_rounded,
-          onTap: () => abrirPantalla(const ReportesAdminScreen()),
-        ),
-
-        const SizedBox(height: 16),
-
-        tituloSeccion(
-          'Gestión de usuarios',
-          'Consulta las cuentas y administra sus permisos',
-        ),
-
-        const SizedBox(height: 14),
-
-        buscadorUsuarios(),
-
-        const SizedBox(height: 15),
-
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text(
-              'Usuarios registrados',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 15,
-                color: Color(0xFF26372C),
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: BoxDecoration(
-                color: verdeClaro,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                '${usuariosFiltrados.length} resultados',
-                style: const TextStyle(
-                  color: verde,
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ],
-        ),
-
-        const SizedBox(height: 12),
-
-        if (usuariosFiltrados.isEmpty)
-          mensajeSinUsuarios()
-        else
-          ...usuariosFiltrados.map(tarjetaUsuario),
-      ],
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: fondo,
-      appBar: AppBar(
-        elevation: 0,
-        backgroundColor: verde,
-        foregroundColor: Colors.white,
-        title: const Text(
-          'Panel administrador',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        actions: [
-          IconButton(
-            tooltip: 'Notificaciones',
-            onPressed: () async {
-              await Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const NotificacionesScreen(),
-                ),
-              );
-
-              _cargarNotificacionesAdmin();
-            },
-            icon: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                const Icon(Icons.notifications_outlined),
-                if (notificacionesNoLeidas > 0)
-                  Positioned(
-                    right: -6,
-                    top: -6,
-                    child: Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: const BoxDecoration(
-                        color: Colors.red,
-                        shape: BoxShape.circle,
-                      ),
-                      constraints: const BoxConstraints(
-                        minWidth: 18,
-                        minHeight: 18,
-                      ),
-                      child: Text(
-                        notificacionesNoLeidas > 99
-                            ? '99+'
-                            : '$notificacionesNoLeidas',
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
+  Widget mensajeErrorUsuarios() {
+    return Container(
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(17),
+      ),
+      child: Column(
+        children: [
+          const Icon(
+            Icons.cloud_off_rounded,
+            color: Colors.redAccent,
+            size: 42,
           ),
-          IconButton(
+          const SizedBox(height: 12),
+          Text(
+            error ?? 'Ocurrió un error.',
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Colors.black54),
+          ),
+          const SizedBox(height: 10),
+          TextButton.icon(
             onPressed: cargarUsuarios,
-            icon: const Icon(Icons.refresh_rounded),
-            tooltip: 'Actualizar',
-          ),
-          IconButton(
-            onPressed: cerrarSesion,
-            icon: const Icon(Icons.logout_rounded),
-            tooltip: 'Cerrar sesión',
+            icon: const Icon(Icons.refresh),
+            label: const Text('Reintentar'),
           ),
         ],
       ),
-      body: RefreshIndicator(
-        color: verde,
-        onRefresh: cargarUsuarios,
-        child: cargando
-            ? ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                children: const [
-                  SizedBox(height: 250),
-                  Center(child: CircularProgressIndicator(color: verde)),
-                ],
-              )
-            : error != null
-            ? ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                children: [
-                  const SizedBox(height: 140),
-                  const Icon(
-                    Icons.cloud_off_rounded,
-                    color: Colors.redAccent,
-                    size: 55,
+    );
+  }
+
+  // --------------------------------------------------
+  // REPORTES
+  // --------------------------------------------------
+
+  Widget reportesPage() {
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 850),
+        child: RefreshIndicator(
+          color: verde,
+          onRefresh: cargarEstadisticas,
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(18, 20, 18, 30),
+            children: [
+              Container(
+                padding: const EdgeInsets.all(22),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF315B9A), Color(0xFF527DB8)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
-                  const SizedBox(height: 15),
-                  Center(
-                    child: Text(
-                      error!,
-                      style: const TextStyle(color: Colors.black54),
+                  borderRadius: BorderRadius.circular(21),
+                ),
+                child: const Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'INFORMACIÓN DEL SISTEMA',
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1.3,
+                            ),
+                          ),
+                          SizedBox(height: 8),
+                          Text(
+                            'Reportes y estadísticas',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          SizedBox(height: 6),
+                          Text(
+                            'Consulta los resultados y la actividad de PetCare.',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 13,
+                              height: 1.4,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    SizedBox(width: 12),
+                    Icon(
+                      Icons.analytics_rounded,
+                      color: Colors.white,
+                      size: 43,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 23),
+              tituloSeccion(
+                'Indicadores disponibles',
+                'Resumen de los datos actuales del sistema.',
+              ),
+              const SizedBox(height: 14),
+              tarjetaEstadistica(
+                'Usuarios registrados',
+                usuarios.length,
+                Icons.people_alt_rounded,
+                verde,
+              ),
+              const SizedBox(height: 10),
+              tarjetaEstadistica(
+                'Mascotas registradas',
+                totalMascotas,
+                Icons.pets_rounded,
+                Colors.teal,
+              ),
+              const SizedBox(height: 10),
+              tarjetaEstadistica(
+                'Reservas registradas',
+                totalReservas,
+                Icons.calendar_month_rounded,
+                Colors.deepOrange,
+              ),
+              const SizedBox(height: 10),
+              tarjetaEstadistica(
+                'Reservas atendidas',
+                reservasAtendidas,
+                Icons.medical_information_rounded,
+                Colors.indigo,
+              ),
+              const SizedBox(height: 25),
+              Material(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(18),
+                child: InkWell(
+                  onTap: () {
+                    abrirPantalla(const ReportesAdminScreen());
+                  },
+                  borderRadius: BorderRadius.circular(18),
+                  child: Container(
+                    padding: const EdgeInsets.all(19),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(color: const Color(0xFFE8EEE9)),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.bar_chart_rounded, color: verde, size: 32),
+                        SizedBox(width: 13),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Abrir reportes completos',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF26372C),
+                                  fontSize: 15,
+                                ),
+                              ),
+                              SizedBox(height: 5),
+                              Text(
+                                'Ver gráficos y estadísticas detalladas.',
+                                style: TextStyle(
+                                  color: Colors.black54,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Icon(
+                          Icons.arrow_forward_ios_rounded,
+                          color: verde,
+                          size: 17,
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  Center(
-                    child: TextButton.icon(
-                      onPressed: cargarUsuarios,
-                      icon: const Icon(Icons.refresh),
-                      label: const Text('Reintentar'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // --------------------------------------------------
+  // TARJETAS GENERALES
+  // --------------------------------------------------
+
+  Widget tarjetaAcceso({
+    required String titulo,
+    required String descripcion,
+    required IconData icono,
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(17),
+        border: Border.all(color: const Color(0xFFE8EEE9)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(17),
+        child: Padding(
+          padding: const EdgeInsets.all(15),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: verdeClaro,
+                  borderRadius: BorderRadius.circular(13),
+                ),
+                child: Icon(icono, color: verde, size: 25),
+              ),
+              const SizedBox(width: 13),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      titulo,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF26372C),
+                        fontSize: 15,
+                      ),
                     ),
-                  ),
-                ],
-              )
-            : contenidoPrincipal(),
+                    const SizedBox(height: 4),
+                    Text(
+                      descripcion,
+                      style: const TextStyle(
+                        color: Colors.black54,
+                        fontSize: 12,
+                        height: 1.3,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Icon(
+                Icons.arrow_forward_ios_rounded,
+                color: verde,
+                size: 17,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

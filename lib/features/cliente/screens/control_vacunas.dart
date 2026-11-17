@@ -12,6 +12,7 @@ class ControlVacunasScreen extends StatefulWidget {
 
 class _ControlVacunasScreenState extends State<ControlVacunasScreen> {
   final supabase = Supabase.instance.client;
+  RealtimeChannel? _canalVacunas;
 
   bool cargando = true;
   String? error;
@@ -26,6 +27,7 @@ class _ControlVacunasScreenState extends State<ControlVacunasScreen> {
   @override
   void initState() {
     super.initState();
+    _escucharCambios();
     cargarDatos();
   }
 
@@ -90,6 +92,32 @@ class _ControlVacunasScreenState extends State<ControlVacunasScreen> {
     }
   }
 
+  void _escucharCambios() {
+    final usuario = supabase.auth.currentUser;
+
+    if (usuario == null) return;
+
+    _canalVacunas = supabase
+        .channel('control-vacunas-${usuario.id}')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'mascotas',
+          callback: (payload) {
+            cargarDatos();
+          },
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'historial_medico',
+          callback: (payload) {
+            cargarDatos();
+          },
+        )
+        .subscribe();
+  }
+
   String formatoFecha(dynamic valor) {
     if (valor == null) return 'Fecha no disponible';
 
@@ -118,6 +146,15 @@ class _ControlVacunasScreenState extends State<ControlVacunasScreen> {
     return vacunas.where((vacuna) {
       return vacuna['mascota_id'].toString() == mascotaSeleccionada.toString();
     }).toList();
+  }
+
+  @override
+  void dispose() {
+    if (_canalVacunas != null) {
+      supabase.removeChannel(_canalVacunas!);
+    }
+
+    super.dispose();
   }
 
   @override

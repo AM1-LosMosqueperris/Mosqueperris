@@ -358,8 +358,15 @@ class _PetCareNavigationState extends State<PetCareNavigation> {
       body: IndexedStack(index: selectedIndex, children: screens),
 
       bottomNavigationBar: NavigationBar(
-        selectedIndex: selectedIndex < 5 ? selectedIndex : 0,
-        onDestinationSelected: cambiarPantalla,
+        selectedIndex: () {
+          const indicesPrincipales = [0, 1, 3, 8, 2];
+          final posicion = indicesPrincipales.indexOf(selectedIndex);
+          return posicion == -1 ? 0 : posicion;
+        }(),
+        onDestinationSelected: (posicion) {
+          const indicesPrincipales = [0, 1, 3, 8, 2];
+          cambiarPantalla(indicesPrincipales[posicion]);
+        },
         destinations: const [
           NavigationDestination(
             icon: Icon(Icons.home_outlined),
@@ -372,19 +379,19 @@ class _PetCareNavigationState extends State<PetCareNavigation> {
             label: 'Mascotas',
           ),
           NavigationDestination(
-            icon: Icon(Icons.medical_services_outlined),
-            selectedIcon: Icon(Icons.medical_services),
-            label: 'Servicios',
-          ),
-          NavigationDestination(
             icon: Icon(Icons.calendar_month_outlined),
             selectedIcon: Icon(Icons.calendar_month),
             label: 'Citas',
           ),
           NavigationDestination(
-            icon: Icon(Icons.vaccines_outlined),
-            selectedIcon: Icon(Icons.vaccines),
-            label: 'Vacunas',
+            icon: Icon(Icons.question_answer_outlined),
+            selectedIcon: Icon(Icons.question_answer),
+            label: 'Consultas',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.medical_services_outlined),
+            selectedIcon: Icon(Icons.medical_services),
+            label: 'Servicios',
           ),
         ],
       ),

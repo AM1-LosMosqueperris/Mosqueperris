@@ -12,6 +12,7 @@ class NotificacionesScreen extends StatefulWidget {
 
 class _NotificacionesScreenState extends State<NotificacionesScreen> {
   final supabase = Supabase.instance.client;
+  RealtimeChannel? _canalNotificaciones;
 
   bool cargando = true;
   String? error;
@@ -23,14 +24,26 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
   @override
   void initState() {
     super.initState();
+    _escucharCambios();
     cargarNotificaciones();
   }
 
-  Future<void> cargarNotificaciones() async {
+  @override
+  void dispose() {
+    if (_canalNotificaciones != null) {
+      supabase.removeChannel(_canalNotificaciones!);
+    }
+
+    super.dispose();
+  }
+
+  Future<void> cargarNotificaciones({bool mostrarCarga = true}) async {
     if (!mounted) return;
 
     setState(() {
-      cargando = true;
+      if (mostrarCarga) {
+        cargando = true;
+      }
       error = null;
     });
 
@@ -65,14 +78,51 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
     }
   }
 
+  void _escucharCambios() {
+    final usuario = supabase.auth.currentUser;
+
+    if (usuario == null) return;
+
+    _canalNotificaciones = supabase
+        .channel('notificaciones-cliente-${usuario.id}')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'notificaciones',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'usuario_id',
+            value: usuario.id,
+          ),
+          callback: (payload) {
+            cargarNotificaciones(mostrarCarga: false);
+          },
+        )
+        .subscribe();
+  }
+
   Future<void> marcarComoLeida(Map<String, dynamic> notificacion) async {
     if (notificacion['leida'] == true) return;
 
     try {
-      await supabase
+      final usuario = supabase.auth.currentUser;
+
+      if (usuario == null) {
+        throw Exception('No hay una sesión activa.');
+      }
+
+      final respuesta = await supabase
           .from('notificaciones')
           .update({'leida': true})
-          .eq('id', notificacion['id']);
+          .eq('id', notificacion['id'])
+          .eq('usuario_id', usuario.id)
+          .select('id');
+
+      if (respuesta.isEmpty) {
+        // El registro pudo cambiar en otra sesion: recargamos para reflejar el estado real.
+        await cargarNotificaciones(mostrarCarga: false);
+        return;
+      }
 
       if (!mounted) return;
 
@@ -109,11 +159,18 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
 
       if (usuario == null) return;
 
-      await supabase
+      final respuesta = await supabase
           .from('notificaciones')
           .update({'leida': true})
           .eq('usuario_id', usuario.id)
-          .eq('leida', false);
+          .eq('leida', false)
+          .select('id');
+
+      if (respuesta.isEmpty) {
+        // No habia nada pendiente (o cambio en otra sesion): recargamos el estado real.
+        await cargarNotificaciones(mostrarCarga: false);
+        return;
+      }
 
       if (!mounted) return;
 
@@ -151,6 +208,18 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
         return Icons.calendar_month_outlined;
       case 'historial_medico':
         return Icons.medical_services_outlined;
+      case 'consulta_admin':
+        return Icons.contact_support_outlined;
+      case 'consulta_admitida':
+        return Icons.assignment_turned_in_outlined;
+      case 'consulta_atendida':
+        return Icons.mark_email_read_outlined;
+      case 'reserva_admin':
+        return Icons.admin_panel_settings_outlined;
+      case 'reserva_veterinario':
+        return Icons.medical_information_outlined;
+      case 'usuario_nuevo':
+        return Icons.person_add_alt_outlined;
       default:
         return Icons.notifications_none;
     }
@@ -162,6 +231,18 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
         return Colors.blue;
       case 'historial_medico':
         return verde;
+      case 'consulta_admin':
+        return Colors.deepPurple;
+      case 'consulta_admitida':
+        return Colors.orange;
+      case 'consulta_atendida':
+        return Colors.green;
+      case 'reserva_admin':
+        return Colors.teal;
+      case 'reserva_veterinario':
+        return Colors.indigo;
+      case 'usuario_nuevo':
+        return Colors.blueGrey;
       default:
         return Colors.orange;
     }

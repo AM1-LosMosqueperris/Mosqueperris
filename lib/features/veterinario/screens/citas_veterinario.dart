@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'package:petcare_santa_cruz/utils/fechas.dart';
+
 class CitasVeterinarioScreen extends StatefulWidget {
   const CitasVeterinarioScreen({super.key});
 
@@ -13,6 +15,7 @@ class _CitasVeterinarioScreenState extends State<CitasVeterinarioScreen> {
   static const Color verdeClaro = Color(0xFFE8F5ED);
 
   final supabase = Supabase.instance.client;
+  RealtimeChannel? canalReservas;
 
   List<Map<String, dynamic>> reservas = [];
 
@@ -32,15 +35,32 @@ class _CitasVeterinarioScreenState extends State<CitasVeterinarioScreen> {
   void initState() {
     super.initState();
     cargarReservas();
+    escucharReservas();
   }
 
-  Future<void> cargarReservas() async {
+  void escucharReservas() {
+    canalReservas = supabase
+        .channel('reservas-veterinario')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'reservas',
+          callback: (payload) {
+            cargarReservas(mostrarCarga: false);
+          },
+        )
+        .subscribe();
+  }
+
+  Future<void> cargarReservas({bool mostrarCarga = true}) async {
     if (!mounted) return;
 
-    setState(() {
-      cargando = true;
-      error = null;
-    });
+    if (mostrarCarga) {
+      setState(() {
+        cargando = true;
+        error = null;
+      });
+    }
 
     try {
       final respuesta = await supabase
@@ -113,10 +133,31 @@ class _CitasVeterinarioScreenState extends State<CitasVeterinarioScreen> {
     if (confirmar != true || !mounted) return;
 
     try {
-      await supabase
+      final respuesta = await supabase
           .from('reservas')
           .update({'estado': nuevoEstado})
-          .eq('id', reserva['id']);
+          .eq('id', reserva['id'])
+          .eq('estado', 'Pendiente')
+          .select('id');
+
+      if (respuesta.isEmpty) {
+        if (!mounted) return;
+
+        await cargarReservas(mostrarCarga: false);
+
+        if (!mounted) return;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Esta cita ya no esta pendiente. Se actualizo la lista.',
+            ),
+            backgroundColor: Colors.orange,
+          ),
+        );
+
+        return;
+      }
 
       if (!mounted) return;
 
@@ -284,71 +325,45 @@ class _CitasVeterinarioScreenState extends State<CitasVeterinarioScreen> {
                             });
 
                             try {
-                              final perfil = await supabase
-                                  .from('perfiles')
-                                  .select('nombre')
-                                  .eq('id', usuario.id)
-                                  .maybeSingle();
+                              final rpcDisponible =
+                                  await _registrarAtencionConRpc(
+                                    reservaId: reservaId,
+                                    tipo: tipoController.text.trim(),
+                                    descripcion: descripcionController.text
+                                        .trim(),
+                                    diagnostico: diagnosticoController.text
+                                        .trim(),
+                                    tratamiento: tratamientoController.text
+                                        .trim(),
+                                    vacuna: vacunaController.text.trim(),
+                                    observaciones: observacionesController.text
+                                        .trim(),
+                                  );
 
-                              final nombreVeterinario =
-                                  perfil?['nombre']?.toString() ??
-                                  'Veterinario';
-
-                              // Comprobar si ya existe una atención
-                              // registrada para esta reserva.
-                              final historialExistente = await supabase
-                                  .from('historial_medico')
-                                  .select('id')
-                                  .eq('mascota_id', mascotaId)
-                                  .eq('usuario_id', usuarioId)
-                                  .eq('veterinario_id', usuario.id)
-                                  .eq(
-                                    'descripcion',
-                                    descripcionController.text.trim(),
-                                  )
-                                  .eq(
-                                    'fecha',
-                                    DateTime.now().toIso8601String().substring(
-                                      0,
-                                      10,
-                                    ),
-                                  )
-                                  .limit(1);
-
-                              if (historialExistente.isEmpty) {
-                                await supabase.from('historial_medico').insert({
-                                  'usuario_id': usuarioId,
-                                  'mascota_id': mascotaId,
-                                  'veterinario_id': usuario.id,
-                                  'fecha': DateTime.now()
-                                      .toIso8601String()
-                                      .substring(0, 10),
-                                  'tipo': tipoController.text.trim(),
-                                  'descripcion': descripcionController.text
+                              if (!rpcDisponible) {
+                                // La RPC no está desplegada en este entorno:
+                                // se recurre al flujo anterior (INSERT + UPDATE).
+                                await _registrarAtencionFlujoAnterior(
+                                  reservaId: reservaId,
+                                  mascotaId: mascotaId,
+                                  usuarioId: usuarioId,
+                                  tipo: tipoController.text.trim(),
+                                  descripcion: descripcionController.text
                                       .trim(),
-                                  'diagnostico': diagnosticoController.text
+                                  diagnostico: diagnosticoController.text
                                       .trim(),
-                                  'tratamiento': tratamientoController.text
+                                  tratamiento: tratamientoController.text
                                       .trim(),
-                                  'vacuna': vacunaController.text.trim(),
-                                  'observaciones': observacionesController.text
+                                  vacuna: vacunaController.text.trim(),
+                                  observaciones: observacionesController.text
                                       .trim(),
-                                  'veterinario': nombreVeterinario,
-                                });
+                                );
                               }
-
-                              // Actualizar la reserva solamente después
-                              // de guardar o comprobar el historial.
-                              await supabase
-                                  .from('reservas')
-                                  .update({'estado': 'Atendida'})
-                                  .eq('id', reservaId)
-                                  .eq('estado', 'Confirmada');
 
                               if (!dialogContext.mounted) return;
 
                               Navigator.pop(dialogContext, true);
-                            } catch (e) {
+                            } on PostgrestException catch (e) {
                               debugPrint('ERROR AL REGISTRAR ATENCIÓN: $e');
 
                               actualizarDialogo(() {
@@ -357,8 +372,22 @@ class _CitasVeterinarioScreenState extends State<CitasVeterinarioScreen> {
 
                               ScaffoldMessenger.of(dialogContext).showSnackBar(
                                 SnackBar(
+                                  content: Text(_mensajeErrorAtencion(e)),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            } catch (e) {
+                              debugPrint('ERROR AL REGISTRAR ATENCIÓN: $e');
+
+                              actualizarDialogo(() {
+                                guardando = false;
+                              });
+
+                              ScaffoldMessenger.of(dialogContext).showSnackBar(
+                                const SnackBar(
                                   content: Text(
-                                    'No se pudo registrar la atención: $e',
+                                    'No se pudo registrar la atención. '
+                                    'Inténtalo de nuevo.',
                                   ),
                                   backgroundColor: Colors.red,
                                 ),
@@ -412,6 +441,146 @@ class _CitasVeterinarioScreenState extends State<CitasVeterinarioScreen> {
     }
   }
 
+  /// Registra la atención médica mediante la RPC transaccional `atender_cita`,
+  /// que escribe el historial médico y cierra la cita en una sola transacción
+  /// (evita que quede una atención registrada con la cita sin cerrar).
+  ///
+  /// Devuelve `true` si la RPC estaba disponible y ejecutó el registro.
+  /// Devuelve `false` si la RPC no existe en este entorno, para poder
+  /// recurrir al flujo anterior sin perder la funcionalidad.
+  Future<bool> _registrarAtencionConRpc({
+    required dynamic reservaId,
+    required String tipo,
+    required String descripcion,
+    required String diagnostico,
+    required String tratamiento,
+    required String vacuna,
+    required String observaciones,
+  }) async {
+    try {
+      await supabase.rpc(
+        'atender_cita',
+        params: {
+          'p_reserva_id': int.parse(reservaId.toString()),
+          'p_tipo': tipo,
+          'p_descripcion': descripcion,
+          'p_diagnostico': diagnostico,
+          'p_tratamiento': tratamiento,
+          'p_vacuna': vacuna,
+          'p_observaciones': observaciones,
+        },
+      );
+
+      return true;
+    } on PostgrestException catch (e) {
+      final codigo = e.code ?? '';
+      final mensaje = e.message.toLowerCase();
+
+      final rpcAusente =
+          codigo == '42883' ||
+          codigo == '42P01' ||
+          codigo == 'PGRST202' ||
+          (mensaje.contains('atender_cita') &&
+              (mensaje.contains('no existe') ||
+                  mensaje.contains('not found') ||
+                  mensaje.contains('could not find')));
+
+      if (rpcAusente) {
+        debugPrint(
+          'La RPC atender_cita no está disponible en este entorno. '
+          'Se usará el flujo de registro anterior.',
+        );
+
+        return false;
+      }
+
+      rethrow;
+    }
+  }
+
+  /// Flujo de registro anterior a la RPC transaccional.
+  ///
+  /// Se conserva como respaldo para entornos donde `atender_cita` todavía no
+  /// está desplegada. Mantiene exactamente el comportamiento original:
+  /// deduplica, inserta el historial y después marca la reserva como atendida.
+  Future<void> _registrarAtencionFlujoAnterior({
+    required dynamic reservaId,
+    required dynamic mascotaId,
+    required dynamic usuarioId,
+    required String tipo,
+    required String descripcion,
+    required String diagnostico,
+    required String tratamiento,
+    required String vacuna,
+    required String observaciones,
+  }) async {
+    final usuario = supabase.auth.currentUser;
+
+    if (usuario == null) {
+      throw Exception('Debes iniciar sesión nuevamente.');
+    }
+
+    final perfil = await supabase
+        .from('perfiles')
+        .select('nombre')
+        .eq('id', usuario.id)
+        .maybeSingle();
+
+    final nombreVeterinario = perfil?['nombre']?.toString() ?? 'Veterinario';
+
+    final fechaAtencion = DateTime.now().toIso8601String().substring(0, 10);
+
+    // Comprobar si ya existe una atención registrada para esta reserva.
+    final historialExistente = await supabase
+        .from('historial_medico')
+        .select('id')
+        .eq('mascota_id', mascotaId)
+        .eq('usuario_id', usuarioId)
+        .eq('veterinario_id', usuario.id)
+        .eq('descripcion', descripcion)
+        .eq('fecha', fechaAtencion)
+        .limit(1);
+
+    if (historialExistente.isEmpty) {
+      await supabase.from('historial_medico').insert({
+        'usuario_id': usuarioId,
+        'mascota_id': mascotaId,
+        'veterinario_id': usuario.id,
+        'fecha': fechaAtencion,
+        'tipo': tipo,
+        'descripcion': descripcion,
+        'diagnostico': diagnostico,
+        'tratamiento': tratamiento,
+        'vacuna': vacuna,
+        'observaciones': observaciones,
+        'veterinario': nombreVeterinario,
+      });
+    }
+
+    // Actualizar la reserva solamente después de guardar o comprobar el historial.
+    await supabase
+        .from('reservas')
+        .update({'estado': 'Atendida'})
+        .eq('id', reservaId)
+        .eq('estado', 'Confirmada');
+  }
+
+  /// Traduce el error de la RPC a un mensaje comprensible para el usuario.
+  String _mensajeErrorAtencion(PostgrestException e) {
+    // P0001: error de negocio lanzado por la RPC con un mensaje en español.
+    if (e.code == 'P0001') {
+      var mensaje = e.message.trim();
+
+      if (mensaje.toUpperCase().startsWith('ERROR:')) {
+        mensaje = mensaje.substring(6).trim();
+      }
+
+      if (mensaje.isNotEmpty) return mensaje;
+    }
+
+    return 'No se pudo registrar la atención. Inténtalo de nuevo.';
+  }
+
   Widget _campoMedico({
     required TextEditingController controller,
     required String label,
@@ -459,36 +628,25 @@ class _CitasVeterinarioScreenState extends State<CitasVeterinarioScreen> {
   String formatearFecha(dynamic valor) {
     if (valor == null) return 'Sin fecha';
 
-    try {
-      final fecha = DateTime.parse(valor.toString());
+    final texto = Fechas.formatearFecha(valor);
 
-      return '${fecha.day.toString().padLeft(2, '0')}/'
-          '${fecha.month.toString().padLeft(2, '0')}/'
-          '${fecha.year}';
-    } catch (_) {
-      return valor.toString();
+    return texto.isEmpty ? valor.toString() : texto;
+  }
+
+  @override
+  void dispose() {
+    if (canalReservas != null) {
+      supabase.removeChannel(canalReservas!);
     }
+
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF7FAF6),
-      appBar: AppBar(
-        backgroundColor: verde,
-        foregroundColor: Colors.white,
-        title: const Text(
-          'Gestión de citas',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        actions: [
-          IconButton(
-            onPressed: cargarReservas,
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Actualizar',
-          ),
-        ],
-      ),
+      appBar: null,
       body: RefreshIndicator(
         onRefresh: cargarReservas,
         child: cargando
@@ -617,7 +775,7 @@ class _CitasVeterinarioScreenState extends State<CitasVeterinarioScreen> {
                     final telefono =
                         reserva['telefono']?.toString() ?? 'Sin teléfono';
 
-                    final hora = reserva['hora']?.toString() ?? '';
+                    final hora = Fechas.formatearHora(reserva['hora']);
 
                     return Card(
                       color: Colors.white,
@@ -679,11 +837,7 @@ class _CitasVeterinarioScreenState extends State<CitasVeterinarioScreen> {
                               'Fecha',
                               formatearFecha(reserva['fecha']),
                             ),
-                            _dato(
-                              Icons.access_time,
-                              'Hora',
-                              hora.length >= 5 ? hora.substring(0, 5) : hora,
-                            ),
+                            _dato(Icons.access_time, 'Hora', hora),
                             if ((reserva['comentario']?.toString() ?? '')
                                 .trim()
                                 .isNotEmpty)

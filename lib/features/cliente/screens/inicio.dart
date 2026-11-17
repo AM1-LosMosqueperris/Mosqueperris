@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'package:petcare_santa_cruz/utils/fechas.dart';
+
 class InicioScreen extends StatefulWidget {
   final Function(int) onNavigate;
   final VoidCallback onOpenMenu;
@@ -48,9 +50,51 @@ class _InicioScreenState extends State<InicioScreen> {
     if (usuario == null) return;
 
     _canalNotificaciones = supabase
-        .channel('notificaciones-${usuario.id}')
+        .channel('resumen-${usuario.id}')
         .onPostgresChanges(
-          event: PostgresChangeEvent.update,
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'mascotas',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'usuario_id',
+            value: usuario.id,
+          ),
+          callback: (payload) {
+            debugPrint('CAMBIO EN MASCOTAS: ${payload.eventType}');
+            _cargarResumen(mostrarCarga: false);
+          },
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'reservas',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'usuario_id',
+            value: usuario.id,
+          ),
+          callback: (payload) {
+            debugPrint('CAMBIO EN RESERVAS: ${payload.eventType}');
+            _cargarResumen(mostrarCarga: false);
+          },
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'historial_medico',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'usuario_id',
+            value: usuario.id,
+          ),
+          callback: (payload) {
+            debugPrint('CAMBIO EN HISTORIAL: ${payload.eventType}');
+            _cargarResumen(mostrarCarga: false);
+          },
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
           schema: 'public',
           table: 'notificaciones',
           filter: PostgresChangeFilter(
@@ -59,31 +103,14 @@ class _InicioScreenState extends State<InicioScreen> {
             value: usuario.id,
           ),
           callback: (payload) {
-            _cargarContadorNotificaciones();
+            debugPrint('CAMBIO EN NOTIFICACIONES: ${payload.eventType}');
+            _cargarResumen(mostrarCarga: false);
           },
         )
         .subscribe();
   }
 
-  Future<void> _cargarContadorNotificaciones() async {
-    final usuario = supabase.auth.currentUser;
-
-    if (usuario == null) return;
-
-    final resultado = await supabase
-        .from('notificaciones')
-        .select('id')
-        .eq('usuario_id', usuario.id)
-        .eq('leida', false);
-
-    if (!mounted) return;
-
-    setState(() {
-      notificacionesNoLeidas = resultado.length;
-    });
-  }
-
-  Future<void> _cargarResumen() async {
+  Future<void> _cargarResumen({bool mostrarCarga = true}) async {
     final usuario = supabase.auth.currentUser;
 
     if (usuario == null) {
@@ -96,7 +123,9 @@ class _InicioScreenState extends State<InicioScreen> {
 
     if (mounted) {
       setState(() {
-        cargando = true;
+        if (mostrarCarga) {
+          cargando = true;
+        }
         errorCarga = null;
       });
     }
@@ -139,22 +168,23 @@ class _InicioScreenState extends State<InicioScreen> {
       final ahora = DateTime.now();
 
       final citasFuturas = citasActivas.where((reserva) {
-        try {
-          final fecha = reserva['fecha'].toString();
-          final hora = reserva['hora'].toString();
+        final fechaHora = Fechas.tryParseFechaHora(
+          reserva['fecha'],
+          reserva['hora'],
+        );
 
-          final fechaHora = DateTime.parse('${fecha}T$hora');
+        if (fechaHora == null) return false;
 
-          return fechaHora.isAfter(ahora);
-        } catch (_) {
-          return false;
-        }
+        return fechaHora.isAfter(ahora);
       }).toList();
 
       citasFuturas.sort((a, b) {
-        final fechaA = DateTime.parse('${a['fecha']}T${a['hora']}');
+        final fechaA = Fechas.tryParseFechaHora(a['fecha'], a['hora']);
+        final fechaB = Fechas.tryParseFechaHora(b['fecha'], b['hora']);
 
-        final fechaB = DateTime.parse('${b['fecha']}T${b['hora']}');
+        if (fechaA == null && fechaB == null) return 0;
+        if (fechaA == null) return 1;
+        if (fechaB == null) return -1;
 
         return fechaA.compareTo(fechaB);
       });

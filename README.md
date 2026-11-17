@@ -1,98 +1,151 @@
-# 🐾 PetCare Santa Cruz
+# PetCare Santa Cruz
 
-**Aplicación móvil para la gestión y el cuidado de mascotas.**
+**Aplicación móvil para la gestión integral del cuidado de mascotas.**
 
-## 📌 Descripción del proyecto
+## 1. Descripción del proyecto
 
-PetCare Santa Cruz es una aplicación móvil desarrollada con Flutter y Dart, cuyo propósito es facilitar a los propietarios de mascotas el acceso a diferentes servicios y herramientas para organizar el cuidado de sus animales.
+PetCare Santa Cruz es una aplicación móvil desarrollada con Flutter y Dart que permite centralizar la gestión de mascotas y facilitar el acceso a servicios veterinarios.
 
-La aplicación reúne funcionalidades como el registro de mascotas, consulta de servicios veterinarios, reserva de citas y control de vacunas, dentro de una interfaz sencilla e intuitiva.
+La aplicación integra herramientas para propietarios de mascotas, veterinarios y administradores, permitiendo gestionar información, reservas, historiales médicos, vacunas, servicios y notificaciones.
 
-## 🎯 Objetivo
+El sistema utiliza Supabase como servicio de backend para la autenticación y gestión de información.
 
-Desarrollar una aplicación móvil que permita centralizar la información y facilitar la organización de las actividades relacionadas con el cuidado de las mascotas.
+## 2. Objetivo general
 
-## 🚀 Funcionalidades principales
+Desarrollar una aplicación móvil que facilite la organización y administración del cuidado de las mascotas, conectando a propietarios, veterinarios y administradores mediante una plataforma intuitiva y centralizada.
 
-Actualmente, el proyecto cuenta con los siguientes módulos:
+## 3. Tipos de usuarios
 
-1. **Inicio:** pantalla principal con acceso a las diferentes secciones.
-2. **Registro de mascotas:** permite registrar información de las mascotas.
-3. **Servicios:** muestra los servicios disponibles para el cuidado animal.
-4. **Reserva de citas:** permite registrar solicitudes de citas y seleccionar servicios.
-5. **Control de vacunas:** permite registrar vacunas y sus fechas correspondientes.
-6. **Historial:** sección destinada a consultar información relacionada con las mascotas.
-7. **Tienda:** muestra productos relacionados con el cuidado animal.
-8. **Contacto:** presenta información de contacto y ubicación de referencia.
+### Cliente
+- Registrarse e iniciar sesión.
+- Registrar y consultar sus mascotas.
+- Consultar servicios veterinarios.
+- Solicitar reservas de citas.
+- Consultar el control de vacunas.
+- Revisar el historial médico de sus mascotas.
+- Consultar productos de la tienda.
+- Realizar consultas y acceder a información de contacto.
+- Recibir notificaciones.
 
-## 🛠️ Tecnologías utilizadas
+### Veterinario
+- Consultar información de mascotas.
+- Revisar historiales médicos.
+- Registrar información médica.
+- Gestionar citas veterinarias.
+- Recibir notificaciones sobre nuevas reservas.
 
-- **Flutter:** framework para el desarrollo de aplicaciones móviles.
+### Administrador
+- Gestionar usuarios y roles.
+- Administrar mascotas.
+- Gestionar servicios veterinarios.
+- Administrar reservas.
+- Consultar reportes y estadísticas.
+- Gestionar notificaciones administrativas.
+
+## 4. Funcionalidades principales
+
+| Módulo | Descripción |
+|---|---|
+| Autenticación | Registro, inicio de sesión y recuperación de contraseña. |
+| Inicio | Acceso a las funcionalidades de la aplicación. |
+| Mascotas | Registro y gestión de mascotas. |
+| Servicios | Consulta de servicios veterinarios. |
+| Reservas | Solicitud y gestión de citas. |
+| Vacunas | Control de vacunas y fechas correspondientes. |
+| Historial médico | Consulta y registro de información médica. |
+| Tienda | Consulta de productos para mascotas. |
+| Consultas y contacto | Acceso a información y canales de consulta. |
+| Administración | Gestión de usuarios, servicios, reservas y reportes. |
+| Veterinaria | Gestión de citas e información médica. |
+| Notificaciones | Avisos relacionados con las actividades del sistema. |
+
+## 5. Tecnologías utilizadas
+
+- **Flutter:** framework para el desarrollo de la aplicación.
 - **Dart:** lenguaje de programación.
-- **Android Studio:** herramientas de desarrollo y emulación.
-- **Visual Studio Code:** editor de código.
-- **Git y GitHub:** control de versiones y alojamiento del código fuente.
+- **Supabase:** backend, autenticación y base de datos.
+- **PostgreSQL:** sistema de gestión de base de datos utilizado por Supabase.
+- **Visual Studio Code:** entorno de desarrollo.
+- **Android Studio:** herramientas del SDK y emulación Android.
+- **Git:** control de versiones.
+- **GitHub:** alojamiento del repositorio.
 
-## 📱 Plataforma de desarrollo
+## 6. Arquitectura del proyecto
 
-- Sistema operativo de desarrollo: Windows.
-- Plataforma de ejecución actual: Android.
-- Framework: Flutter.
+El código fuente está organizado mediante una estructura modular basada en funcionalidades (Feature-First).
 
-## 📋 Requisitos
+```text
+lib/
+├── config/
+├── core/
+├── database/
+├── features/
+│   ├── administrador/
+│   ├── auth/
+│   ├── cliente/
+│   ├── notificaciones/
+│   └── veterinario/
+├── models/
+├── services/
+├── utils/
+├── widgets/
+└── main.dart
+```
 
-Para ejecutar el proyecto se necesita:
+Esta organización facilita el mantenimiento, la ampliación y la separación de responsabilidades de cada módulo.
 
-- Flutter SDK.
+## 7. Requisitos para ejecutar el proyecto
+
+- Flutter SDK compatible con las dependencias del proyecto.
 - Dart SDK (incluido con Flutter).
-- Android Studio o Visual Studio Code.
 - Android SDK.
-- Un emulador Android o dispositivo compatible.
+- Visual Studio Code o Android Studio.
+- Emulador Android o dispositivo físico compatible.
+- Acceso a internet.
+- Proyecto de Supabase configurado y credenciales correspondientes.
 
-## ⚙️ Instalación y ejecución
+## 8. Instalación y ejecución
 
-1. Clonar el repositorio:
+### Obtener el código fuente
 
-   ```bash
-   git clone URL_DEL_REPOSITORIO
-   ```
+Clonar el repositorio:
 
-2. Ingresar a la carpeta del proyecto:
+```bash
+git clone https://github.com/AM1-LosMosqueperris/Mosqueperris.git
+```
 
-   ```bash
-   cd petcare-app
-   ```
+Ingresar al proyecto:
 
-3. Descargar las dependencias:
+```bash
+cd Mosqueperris
+```
 
-   ```bash
-   flutter pub get
-   ```
+Cambiar a la rama de desarrollo:
 
-4. Ejecutar la aplicación:
+```bash
+git checkout feature/autenticacion
+```
 
-   ```bash
-   flutter run
-   ```
+### Instalar dependencias
 
-## 📌 Estado del proyecto
+```bash
+flutter pub get
+```
 
-**En desarrollo.**
+### Ejecutar la aplicación
 
-Se cuenta con las pantallas principales y la navegación entre los módulos. Entre los próximos pasos se contempla:
+```bash
+flutter run
+```
 
-- Implementar almacenamiento local mediante SQLite.
-- Conectar los módulos para compartir información.
-- Completar las funcionalidades pendientes.
-- Realizar pruebas de funcionamiento y navegación.
-- Mejorar la experiencia de usuario.
+## 9. Configuración de Supabase
 
-## 👨‍💻 Desarrollo
+La aplicación utiliza Supabase para conectarse al backend.
 
-Proyecto académico de desarrollo de aplicaciones móviles.
+La configuración se encuentra en:
 
-**Nombre del proyecto:** PetCare Santa Cruz.
+```text
+lib/config/config.dart
+```
 
----
-
-*PetCare Santa Cruz – Tecnología al servicio del cuidado de las mascotas.* 🐶🐱
+Para ejecutar el proyecto en otro equipo se deben configurar la URL del proyecto y la clave pública correspondiente

@@ -17,6 +17,7 @@ class _RegistroMascotasScreenState extends State<RegistroMascotasScreen> {
 
   final _formKey = GlobalKey<FormState>();
   final db = Supabase.instance.client;
+  RealtimeChannel? _canalMascotas;
 
   final nombreController = TextEditingController();
   final edadController = TextEditingController();
@@ -31,9 +32,33 @@ class _RegistroMascotasScreenState extends State<RegistroMascotasScreen> {
   bool cargando = true;
   bool enviando = false;
 
+  void _escucharCambios() {
+    final usuario = db.auth.currentUser;
+
+    if (usuario == null) return;
+
+    _canalMascotas = db
+        .channel('mascotas-registro-${usuario.id}')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'mascotas',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'usuario_id',
+            value: usuario.id,
+          ),
+          callback: (payload) {
+            cargarMascotas();
+          },
+        )
+        .subscribe();
+  }
+
   @override
   void initState() {
     super.initState();
+    _escucharCambios();
     cargarMascotas();
   }
 
@@ -219,10 +244,15 @@ class _RegistroMascotasScreenState extends State<RegistroMascotasScreen> {
 
   @override
   void dispose() {
+    if (_canalMascotas != null) {
+      db.removeChannel(_canalMascotas!);
+    }
+
     nombreController.dispose();
     edadController.dispose();
     razaController.dispose();
     propietarioController.dispose();
+
     super.dispose();
   }
 

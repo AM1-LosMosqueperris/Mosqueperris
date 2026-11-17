@@ -13,24 +13,95 @@ class _GestionServiciosScreenState extends State<GestionServiciosScreen> {
   static const Color verdeClaro = Color(0xFFE8F5ED);
 
   final supabase = Supabase.instance.client;
+  RealtimeChannel? _canalServicios;
 
   List<Map<String, dynamic>> servicios = [];
 
   bool cargando = true;
   String? error;
   bool guardando = false;
+  int get totalServicios => servicios.length;
+
+  int get serviciosActivos =>
+      servicios.where((s) => s['activo'] == true).length;
+
+  int get serviciosInactivos =>
+      servicios.where((s) => s['activo'] != true).length;
+
+  Widget tarjetaIndicador({
+    required String titulo,
+    required int cantidad,
+    required IconData icono,
+    required Color color,
+  }) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        margin: const EdgeInsets.symmetric(horizontal: 4),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          children: [
+            Icon(icono, color: color, size: 26),
+            const SizedBox(height: 8),
+            Text(
+              cantidad.toString(),
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              titulo,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 12),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   @override
   void initState() {
     super.initState();
     cargarServicios();
+    escucharCambios();
   }
 
-  Future<void> cargarServicios() async {
-    setState(() {
-      cargando = true;
-      error = null;
-    });
+  @override
+  void dispose() {
+    if (_canalServicios != null) {
+      supabase.removeChannel(_canalServicios!);
+    }
+    super.dispose();
+  }
+
+  void escucharCambios() {
+    _canalServicios = supabase
+        .channel('servicios-administrador')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'servicios',
+          callback: (payload) {
+            cargarServicios(mostrarCarga: false);
+          },
+        )
+        .subscribe();
+  }
+
+  Future<void> cargarServicios({bool mostrarCarga = true}) async {
+    if (mostrarCarga) {
+      setState(() {
+        cargando = true;
+        error = null;
+      });
+    }
 
     try {
       final datos = await supabase.rpc('listar_servicios_admin');
@@ -43,6 +114,7 @@ class _GestionServiciosScreenState extends State<GestionServiciosScreen> {
             .toList();
 
         cargando = false;
+        error = null;
       });
     } catch (e) {
       debugPrint('ERROR AL CARGAR SERVICIOS: $e');
@@ -357,15 +429,38 @@ class _GestionServiciosScreenState extends State<GestionServiciosScreen> {
             : ListView(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 90),
                 children: [
-                  Text(
-                    '${servicios.length} servicios registrados',
-                    style: const TextStyle(
+                  const Text(
+                    'Resumen de servicios',
+                    style: TextStyle(
                       fontSize: 17,
                       fontWeight: FontWeight.bold,
                       color: verde,
                     ),
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      tarjetaIndicador(
+                        titulo: 'Total',
+                        cantidad: totalServicios,
+                        icono: Icons.medical_services,
+                        color: verde,
+                      ),
+                      tarjetaIndicador(
+                        titulo: 'Activos',
+                        cantidad: serviciosActivos,
+                        icono: Icons.check_circle,
+                        color: Colors.green,
+                      ),
+                      tarjetaIndicador(
+                        titulo: 'Inactivos',
+                        cantidad: serviciosInactivos,
+                        icono: Icons.cancel,
+                        color: Colors.red,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
                   ...servicios.map((servicio) {
                     final nombre = servicio['nombre']?.toString() ?? '';
                     final descripcion =

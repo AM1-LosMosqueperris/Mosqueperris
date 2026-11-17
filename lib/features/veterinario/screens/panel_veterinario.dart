@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:petcare_santa_cruz/features/veterinario/screens/detalle_mascota_veterinario.dart';
 import 'package:petcare_santa_cruz/features/veterinario/screens/citas_veterinario.dart';
 import 'package:petcare_santa_cruz/features/notificaciones/screens/notificaciones.dart';
+import 'package:petcare_santa_cruz/features/veterinario/screens/consultas_veterinario.dart';
 
 class PanelVeterinarioScreen extends StatefulWidget {
   const PanelVeterinarioScreen({super.key});
@@ -20,13 +21,19 @@ class _PanelVeterinarioScreenState extends State<PanelVeterinarioScreen> {
   final supabase = Supabase.instance.client;
   final TextEditingController busquedaController = TextEditingController();
 
-  List<Map<String, dynamic>> mascotas = [];
-  int notificacionesNoLeidas = 0;
+  RealtimeChannel? _canalMascotas;
   RealtimeChannel? _canalNotificaciones;
+
+  List<Map<String, dynamic>> mascotas = [];
+
+  int selectedIndex = 0;
+  int notificacionesNoLeidas = 0;
 
   bool cargando = true;
   String? error;
   String textoBusqueda = '';
+
+  String get usuarioId => supabase.auth.currentUser?.id ?? '';
 
   List<Map<String, dynamic>> get mascotasFiltradas {
     if (textoBusqueda.trim().isEmpty) return mascotas;
@@ -52,13 +59,52 @@ class _PanelVeterinarioScreenState extends State<PanelVeterinarioScreen> {
   void initState() {
     super.initState();
     cargarMascotas();
+    _escucharMascotas();
     _cargarNotificacionesVeterinario();
     _escucharNotificacionesVeterinario();
   }
 
+  @override
+  void dispose() {
+    busquedaController.dispose();
+
+    if (_canalMascotas != null) {
+      supabase.removeChannel(_canalMascotas!);
+    }
+
+    if (_canalNotificaciones != null) {
+      supabase.removeChannel(_canalNotificaciones!);
+    }
+
+    super.dispose();
+  }
+
+  void cambiarPantalla(int index) {
+    setState(() {
+      selectedIndex = index;
+    });
+
+    if (index == 3) {
+      cargarMascotas(mostrarCarga: false);
+    }
+  }
+
+  void _escucharMascotas() {
+    _canalMascotas = supabase
+        .channel('mascotas-panel-veterinario')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'mascotas',
+          callback: (payload) {
+            cargarMascotas(mostrarCarga: false);
+          },
+        )
+        .subscribe();
+  }
+
   Future<void> _cargarNotificacionesVeterinario() async {
     final usuario = supabase.auth.currentUser;
-
     if (usuario == null) return;
 
     try {
@@ -80,7 +126,6 @@ class _PanelVeterinarioScreenState extends State<PanelVeterinarioScreen> {
 
   void _escucharNotificacionesVeterinario() {
     final usuario = supabase.auth.currentUser;
-
     if (usuario == null) return;
 
     _canalNotificaciones = supabase
@@ -120,24 +165,15 @@ class _PanelVeterinarioScreenState extends State<PanelVeterinarioScreen> {
         .subscribe();
   }
 
-  @override
-  void dispose() {
-    busquedaController.dispose();
-
-    if (_canalNotificaciones != null) {
-      supabase.removeChannel(_canalNotificaciones!);
-    }
-
-    super.dispose();
-  }
-
-  Future<void> cargarMascotas() async {
+  Future<void> cargarMascotas({bool mostrarCarga = true}) async {
     if (!mounted) return;
 
-    setState(() {
-      cargando = true;
-      error = null;
-    });
+    if (mostrarCarga) {
+      setState(() {
+        cargando = true;
+        error = null;
+      });
+    }
 
     try {
       final datos = await supabase
@@ -153,6 +189,7 @@ class _PanelVeterinarioScreenState extends State<PanelVeterinarioScreen> {
       setState(() {
         mascotas = List<Map<String, dynamic>>.from(datos);
         cargando = false;
+        error = null;
       });
     } catch (e) {
       debugPrint('ERROR AL CARGAR MASCOTAS: $e');
@@ -166,11 +203,14 @@ class _PanelVeterinarioScreenState extends State<PanelVeterinarioScreen> {
     }
   }
 
-  void abrirGestionCitas() {
-    Navigator.push(
+  Future<void> abrirNotificaciones() async {
+    await Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => const CitasVeterinarioScreen()),
+      MaterialPageRoute(builder: (context) => const NotificacionesScreen()),
     );
+
+    if (!mounted) return;
+    _cargarNotificacionesVeterinario();
   }
 
   Future<void> cerrarSesion() async {
@@ -198,23 +238,25 @@ class _PanelVeterinarioScreenState extends State<PanelVeterinarioScreen> {
         elevation: 0,
         backgroundColor: verde,
         foregroundColor: Colors.white,
-        title: const Text(
-          'Panel veterinario',
-          style: TextStyle(fontWeight: FontWeight.bold),
+        title: Row(
+          children: [
+            const Icon(Icons.pets_rounded, size: 25),
+            const SizedBox(width: 10),
+            Text(
+              switch (selectedIndex) {
+                1 => 'Gestión de citas',
+                2 => 'Consultas veterinarias',
+                3 => 'Mis pacientes',
+                _ => 'PetCare Veterinario',
+              },
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+            ),
+          ],
         ),
         actions: [
           IconButton(
             tooltip: 'Notificaciones',
-            onPressed: () async {
-              await Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const NotificacionesScreen(),
-                ),
-              );
-
-              _cargarNotificacionesVeterinario();
-            },
+            onPressed: abrirNotificaciones,
             icon: Stack(
               clipBehavior: Clip.none,
               children: [
@@ -250,145 +292,129 @@ class _PanelVeterinarioScreenState extends State<PanelVeterinarioScreen> {
             ),
           ),
           IconButton(
-            onPressed: abrirGestionCitas,
-            icon: const Icon(Icons.calendar_month_rounded),
-            tooltip: 'Gestionar citas',
-          ),
-          IconButton(
-            onPressed: cargarMascotas,
-            icon: const Icon(Icons.refresh_rounded),
-            tooltip: 'Actualizar',
-          ),
-          IconButton(
+            tooltip: 'Cerrar sesión',
             onPressed: cerrarSesion,
             icon: const Icon(Icons.logout_rounded),
-            tooltip: 'Cerrar sesión',
+          ),
+          const SizedBox(width: 5),
+        ],
+      ),
+      body: IndexedStack(
+        index: selectedIndex,
+        children: [
+          inicioPage(),
+          const CitasVeterinarioScreen(),
+          const ConsultasVeterinarioScreen(),
+          pacientesPage(),
+        ],
+      ),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: selectedIndex,
+        onDestinationSelected: cambiarPantalla,
+        backgroundColor: Colors.white,
+        indicatorColor: verdeClaro,
+        elevation: 3,
+        height: 68,
+        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.home_outlined),
+            selectedIcon: Icon(Icons.home_rounded, color: verde),
+            label: 'Inicio',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.calendar_month_outlined),
+            selectedIcon: Icon(Icons.calendar_month_rounded, color: verde),
+            label: 'Citas',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.question_answer_outlined),
+            selectedIcon: Icon(Icons.question_answer_rounded, color: verde),
+            label: 'Consultas',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.pets_outlined),
+            selectedIcon: Icon(Icons.pets_rounded, color: verde),
+            label: 'Pacientes',
           ),
         ],
       ),
-      body: RefreshIndicator(
-        color: verde,
-        onRefresh: cargarMascotas,
-        child: cargando
-            ? ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                children: const [
-                  SizedBox(height: 250),
-                  Center(child: CircularProgressIndicator(color: verde)),
-                ],
-              )
-            : error != null
-            ? ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                children: [
-                  const SizedBox(height: 140),
-                  const Icon(
-                    Icons.cloud_off_rounded,
-                    color: Colors.redAccent,
-                    size: 55,
-                  ),
-                  const SizedBox(height: 15),
-                  Center(
-                    child: Text(
-                      error!,
-                      style: const TextStyle(color: Colors.black54),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Center(
-                    child: TextButton.icon(
-                      onPressed: cargarMascotas,
-                      icon: const Icon(Icons.refresh),
-                      label: const Text('Reintentar'),
-                    ),
-                  ),
-                ],
-              )
-            : ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(18, 20, 18, 30),
-                children: [
-                  encabezado(),
+    );
+  }
 
-                  const SizedBox(height: 20),
+  // --------------------------------------------------
+  // INICIO
+  // --------------------------------------------------
 
-                  resumenMascotas(),
-
-                  const SizedBox(height: 20),
-
-                  accesoCitas(),
-
-                  const SizedBox(height: 25),
-
-                  tituloSeccion(
-                    'Directorio de mascotas',
-                    'Consulta la información de tus pacientes',
-                  ),
-
-                  const SizedBox(height: 15),
-
-                  buscador(),
-
-                  const SizedBox(height: 17),
-
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Mascotas registradas',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF26372C),
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 11,
-                          vertical: 5,
-                        ),
-                        decoration: BoxDecoration(
-                          color: verdeClaro,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          '${mascotasFiltradas.length} resultados',
-                          style: const TextStyle(
-                            color: verde,
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 12),
-
-                  if (mascotasFiltradas.isEmpty)
-                    mensajeSinResultados()
-                  else
-                    ...mascotasFiltradas.map(tarjetaMascota),
-                ],
-              ),
-      ),
+  Widget inicioPage() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 850),
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(18, 20, 18, 30),
+              children: [
+                encabezado(),
+                const SizedBox(height: 20),
+                resumenMascotas(),
+                const SizedBox(height: 25),
+                tituloSeccion(
+                  'Accesos principales',
+                  'Gestiona las actividades de tu jornada.',
+                ),
+                const SizedBox(height: 15),
+                accesoPrincipal(
+                  titulo: 'Gestión de citas',
+                  descripcion: 'Revisa, confirma y atiende las reservas.',
+                  icono: Icons.calendar_month_rounded,
+                  color: verde,
+                  fondoIcono: verdeClaro,
+                  onTap: () => cambiarPantalla(1),
+                ),
+                const SizedBox(height: 12),
+                accesoPrincipal(
+                  titulo: 'Consultas veterinarias',
+                  descripcion: 'Revisa y responde las consultas de clientes.',
+                  icono: Icons.question_answer_rounded,
+                  color: const Color(0xFF315B9A),
+                  fondoIcono: const Color(0xFFEAF0FA),
+                  onTap: () => cambiarPantalla(2),
+                ),
+                const SizedBox(height: 12),
+                accesoPrincipal(
+                  titulo: 'Directorio de pacientes',
+                  descripcion:
+                      'Consulta las fichas de las mascotas registradas.',
+                  icono: Icons.pets_rounded,
+                  color: const Color(0xFF9A6A22),
+                  fondoIcono: const Color(0xFFFFF3DF),
+                  onTap: () => cambiarPantalla(3),
+                ),
+                const SizedBox(height: 25),
+                tarjetaConsejo(),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
   Widget encabezado() {
     return Container(
-      padding: const EdgeInsets.all(22),
+      padding: const EdgeInsets.all(23),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [verde, Color(0xFF258456)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(23),
         boxShadow: [
           BoxShadow(
             color: verde.withValues(alpha: 0.18),
-            blurRadius: 14,
+            blurRadius: 15,
             offset: const Offset(0, 7),
           ),
         ],
@@ -404,16 +430,16 @@ class _PanelVeterinarioScreenState extends State<PanelVeterinarioScreen> {
                   style: TextStyle(
                     color: Colors.white70,
                     fontSize: 11,
-                    letterSpacing: 1.3,
+                    letterSpacing: 1.4,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                const SizedBox(height: 9),
+                const SizedBox(height: 10),
                 const Text(
-                  'Bienvenido, veterinario',
+                  '¡Bienvenido!',
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 21,
+                    fontSize: 25,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -422,7 +448,7 @@ class _PanelVeterinarioScreenState extends State<PanelVeterinarioScreen> {
                   'Gestiona la atención y el cuidado de tus pacientes.',
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.9),
-                    height: 1.4,
+                    height: 1.5,
                     fontSize: 13,
                   ),
                 ),
@@ -439,7 +465,7 @@ class _PanelVeterinarioScreenState extends State<PanelVeterinarioScreen> {
             child: const Icon(
               Icons.medical_services_rounded,
               color: Colors.white,
-              size: 38,
+              size: 39,
             ),
           ),
         ],
@@ -449,15 +475,15 @@ class _PanelVeterinarioScreenState extends State<PanelVeterinarioScreen> {
 
   Widget resumenMascotas() {
     return Container(
-      padding: const EdgeInsets.all(17),
+      padding: const EdgeInsets.all(19),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(19),
         border: Border.all(color: const Color(0xFFE8EEE9)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.035),
-            blurRadius: 9,
+            blurRadius: 10,
             offset: const Offset(0, 3),
           ),
         ],
@@ -465,14 +491,14 @@ class _PanelVeterinarioScreenState extends State<PanelVeterinarioScreen> {
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(13),
             decoration: BoxDecoration(
               color: verdeClaro,
-              borderRadius: BorderRadius.circular(13),
+              borderRadius: BorderRadius.circular(15),
             ),
-            child: const Icon(Icons.pets_rounded, color: verde, size: 27),
+            child: const Icon(Icons.pets_rounded, color: verde, size: 29),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 15),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -481,95 +507,246 @@ class _PanelVeterinarioScreenState extends State<PanelVeterinarioScreen> {
                   'Pacientes registrados',
                   style: TextStyle(color: Colors.black54, fontSize: 12),
                 ),
-                const SizedBox(height: 3),
+                const SizedBox(height: 4),
                 Text(
                   '${mascotas.length}',
                   style: const TextStyle(
                     color: verde,
                     fontWeight: FontWeight.bold,
-                    fontSize: 24,
+                    fontSize: 27,
                   ),
                 ),
               ],
             ),
           ),
-          const Icon(Icons.check_circle_rounded, color: verde, size: 25),
+          const Icon(Icons.check_circle_rounded, color: verde, size: 27),
         ],
       ),
     );
   }
 
-  Widget accesoCitas() {
-    return InkWell(
-      onTap: abrirGestionCitas,
+  Widget accesoPrincipal({
+    required String titulo,
+    required String descripcion,
+    required IconData icono,
+    required Color color,
+    required Color fondoIcono,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.white,
       borderRadius: BorderRadius.circular(18),
-      child: Container(
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          color: verdeClaro,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: const Color(0xFFD6EBDD)),
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(13),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(18),
+        child: Container(
+          padding: const EdgeInsets.all(17),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: const Color(0xFFE8EEE9)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(13),
+                decoration: BoxDecoration(
+                  color: fondoIcono,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(icono, color: color, size: 27),
               ),
-              child: const Icon(
-                Icons.calendar_month_rounded,
-                color: verde,
-                size: 27,
-              ),
-            ),
-            const SizedBox(width: 13),
-            const Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Gestión de citas',
-                    style: TextStyle(
-                      color: verde,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      titulo,
+                      style: TextStyle(
+                        color: color,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                      ),
                     ),
-                  ),
-                  SizedBox(height: 4),
-                  Text(
-                    'Revisa y administra las reservas',
-                    style: TextStyle(color: Colors.black54, fontSize: 12),
-                  ),
-                ],
+                    const SizedBox(height: 5),
+                    Text(
+                      descripcion,
+                      style: const TextStyle(
+                        color: Colors.black54,
+                        fontSize: 12,
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            const Icon(Icons.arrow_forward_ios_rounded, color: verde, size: 17),
-          ],
+              const SizedBox(width: 8),
+              Icon(Icons.arrow_forward_ios_rounded, color: color, size: 17),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget tituloSeccion(String titulo, String subtitulo) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          titulo,
-          style: const TextStyle(
-            color: Color(0xFF26372C),
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
+  Widget tarjetaConsejo() {
+    return Container(
+      padding: const EdgeInsets.all(17),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF8E9),
+        borderRadius: BorderRadius.circular(17),
+        border: Border.all(color: const Color(0xFFF3E5C5)),
+      ),
+      child: const Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            Icons.lightbulb_outline_rounded,
+            color: Color(0xFF9A6A22),
+            size: 23,
           ),
+          SizedBox(width: 11),
+          Expanded(
+            child: Text(
+              'Recuerda revisar tus citas y consultas para brindar una atención oportuna a cada paciente.',
+              style: TextStyle(
+                color: Color(0xFF76551F),
+                fontSize: 12,
+                height: 1.5,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // --------------------------------------------------
+  // PACIENTES
+  // --------------------------------------------------
+
+  Widget pacientesPage() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 850),
+            child: RefreshIndicator(
+              color: verde,
+              onRefresh: cargarMascotas,
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(18, 20, 18, 30),
+                children: [
+                  encabezadoPacientes(),
+                  const SizedBox(height: 20),
+                  buscador(),
+                  const SizedBox(height: 18),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Mascotas registradas',
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF26372C),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 11,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: verdeClaro,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          '${mascotasFiltradas.length} resultados',
+                          style: const TextStyle(
+                            color: verde,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  if (cargando)
+                    const Padding(
+                      padding: EdgeInsets.only(top: 100),
+                      child: Center(
+                        child: CircularProgressIndicator(color: verde),
+                      ),
+                    )
+                  else if (error != null)
+                    mensajeError()
+                  else if (mascotasFiltradas.isEmpty)
+                    mensajeSinResultados()
+                  else
+                    ...mascotasFiltradas.map(tarjetaMascota),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget encabezadoPacientes() {
+    return Container(
+      padding: const EdgeInsets.all(21),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF9A6A22), Color(0xFFC18B3C)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
-        const SizedBox(height: 5),
-        Text(
-          subtitulo,
-          style: const TextStyle(color: Colors.black54, fontSize: 13),
-        ),
-      ],
+        borderRadius: BorderRadius.circular(21),
+      ),
+      child: const Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'DIRECTORIO',
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.3,
+                  ),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  'Mis pacientes',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                SizedBox(height: 6),
+                Text(
+                  'Consulta la información de las mascotas registradas.',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(width: 12),
+          Icon(Icons.pets_rounded, color: Colors.white, size: 42),
+        ],
+      ),
     );
   }
 
@@ -749,6 +926,58 @@ class _PanelVeterinarioScreenState extends State<PanelVeterinarioScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget mensajeError() {
+    return Container(
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(17),
+      ),
+      child: Column(
+        children: [
+          const Icon(
+            Icons.cloud_off_rounded,
+            color: Colors.redAccent,
+            size: 42,
+          ),
+          const SizedBox(height: 12),
+          Text(
+            error ?? 'Ocurrió un error.',
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Colors.black54),
+          ),
+          const SizedBox(height: 10),
+          TextButton.icon(
+            onPressed: cargarMascotas,
+            icon: const Icon(Icons.refresh),
+            label: const Text('Reintentar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget tituloSeccion(String titulo, String subtitulo) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          titulo,
+          style: const TextStyle(
+            color: Color(0xFF26372C),
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 5),
+        Text(
+          subtitulo,
+          style: const TextStyle(color: Colors.black54, fontSize: 13),
+        ),
+      ],
     );
   }
 }

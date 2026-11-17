@@ -11,8 +11,8 @@ class Validadores {
       return 'Ingrese su teléfono';
     }
 
-    if (!RegExp(r'^[67][0-9]{7}$').hasMatch(valor.trim())) {
-      return 'Debe tener 8 dígitos y comenzar con 6 o 7';
+    if (!RegExp(r'^[0-9]{8}$').hasMatch(valor.trim())) {
+      return 'El teléfono debe tener exactamente 8 dígitos';
     }
 
     return null;

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'package:petcare_santa_cruz/utils/fechas.dart';
+
 class ReservasCitasScreen extends StatefulWidget {
   final String? servicioInicial;
   final VoidCallback? onOpenMenu;
@@ -23,6 +25,45 @@ class _ReservasCitasScreenState extends State<ReservasCitasScreen> {
   final telefonoController = TextEditingController();
 
   final supabase = Supabase.instance.client;
+  RealtimeChannel? _canalReservas;
+
+  void _escucharCambios() {
+    final usuario = supabase.auth.currentUser;
+
+    if (usuario == null) return;
+
+    _canalReservas = supabase
+        .channel('reservas-citas-${usuario.id}')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'reservas',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'usuario_id',
+            value: usuario.id,
+          ),
+          callback: (payload) {
+            debugPrint('CAMBIO EN RESERVAS: ${payload.eventType}');
+            _cargarCitas();
+          },
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'mascotas',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'usuario_id',
+            value: usuario.id,
+          ),
+          callback: (payload) {
+            debugPrint('CAMBIO EN MASCOTAS: ${payload.eventType}');
+            _cargarMascotas();
+          },
+        )
+        .subscribe();
+  }
 
   List<Map<String, dynamic>> mascotas = [];
   Map<String, dynamic>? mascotaSeleccionada;
@@ -56,6 +97,7 @@ class _ReservasCitasScreenState extends State<ReservasCitasScreen> {
 
     _cargarMascotas();
     _cargarCitas();
+    _escucharCambios();
   }
 
   @override
@@ -142,9 +184,7 @@ class _ReservasCitasScreenState extends State<ReservasCitasScreen> {
       final nuevasCitas = <Map<String, String>>[];
 
       for (final reserva in respuesta) {
-        final fecha = DateTime.parse(reserva['fecha'].toString());
-
-        final horaTexto = reserva['hora']?.toString() ?? '';
+        final fecha = Fechas.tryParseFecha(reserva['fecha']);
 
         nuevasCitas.add({
           'id': reserva['id'].toString(),
@@ -152,8 +192,8 @@ class _ReservasCitasScreenState extends State<ReservasCitasScreen> {
           'estado': reserva['estado']?.toString() ?? 'Pendiente',
           'mascota': reserva['mascota']?.toString() ?? 'Sin mascota',
           'servicio': reserva['servicio']?.toString() ?? 'Sin servicio',
-          'fecha': '${fecha.day}/${fecha.month}/${fecha.year}',
-          'hora': horaTexto.length >= 5 ? horaTexto.substring(0, 5) : horaTexto,
+          'fecha': Fechas.formatearFecha(fecha),
+          'hora': Fechas.formatearHora(reserva['hora']),
           'comentario': reserva['comentario']?.toString() ?? '',
           'telefono': reserva['telefono']?.toString() ?? '',
         });
@@ -261,6 +301,25 @@ class _ReservasCitasScreenState extends State<ReservasCitasScreen> {
           backgroundColor: Colors.red,
         ),
       );
+    }
+  }
+
+  /// Traduce los códigos de error de PostgreSQL a un mensaje comprensible
+  /// para el cliente, en lugar de mostrar la excepción técnica.
+  String _mensajeErrorReserva(String? codigo) {
+    switch (codigo) {
+      // 42501: la fila no cumple la política RLS (por ejemplo, la cita ya no
+      // está en el futuro según la zona horaria del negocio).
+      case '42501':
+        return 'Ese horario ya no está disponible. Elige otra fecha u hora.';
+      // 23505: violación de índice único (el slot ya fue reservado).
+      case '23505':
+        return 'Ese horario acaba de ser reservado por otro cliente.';
+      // 23502: valor nulo en una columna obligatoria.
+      case '23502':
+        return 'Faltan datos por completar en la reserva.';
+      default:
+        return 'No se pudo guardar la reserva. Inténtalo de nuevo.';
     }
   }
 
@@ -418,7 +477,23 @@ class _ReservasCitasScreenState extends State<ReservasCitasScreen> {
       }
 
       final mascota = mascotaSeleccionada!;
+      final usuarioActual = supabase.auth.currentUser;
+      final telefono = telefonoController.text.trim();
 
+      final fechaHora = DateTime(
+        fecha.year,
+        fecha.month,
+        fecha.day,
+        hora.hour,
+        hora.minute,
+      );
+
+      debugPrint('Usuario coincide: ${usuario.id == usuarioActual?.id}');
+      debugPrint(
+        'Teléfono válido: ${RegExp(r'^[0-9]{8}$').hasMatch(telefono)}',
+      );
+      debugPrint('Fecha futura: ${fechaHora.isAfter(DateTime.now())}');
+      debugPrint('Fecha seleccionada: $fechaHora');
       await supabase.from('reservas').insert({
         'usuario_id': usuario.id,
         'mascota_id': mascota['id'],
@@ -456,7 +531,7 @@ class _ReservasCitasScreenState extends State<ReservasCitasScreen> {
           backgroundColor: Color(0xFF269B79),
         ),
       );
-    } catch (e, stackTrace) {
+    } on PostgrestException catch (e, stackTrace) {
       debugPrint('ERROR AL GUARDAR RESERVA: $e');
       debugPrint('DETALLE DEL ERROR: $stackTrace');
 
@@ -464,7 +539,19 @@ class _ReservasCitasScreenState extends State<ReservasCitasScreen> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error al guardar la reserva: $e'),
+          content: Text(_mensajeErrorReserva(e.code)),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } catch (e, stackTrace) {
+      debugPrint('ERROR AL GUARDAR RESERVA: $e');
+      debugPrint('DETALLE DEL ERROR: $stackTrace');
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No se pudo guardar la reserva. Inténtalo de nuevo.'),
           backgroundColor: Colors.red,
         ),
       );
@@ -479,9 +566,13 @@ class _ReservasCitasScreenState extends State<ReservasCitasScreen> {
 
   @override
   void dispose() {
+    if (_canalReservas != null) {
+      supabase.removeChannel(_canalReservas!);
+    }
     propietarioController.dispose();
     comentarioController.dispose();
     telefonoController.dispose();
+
     super.dispose();
   }
 

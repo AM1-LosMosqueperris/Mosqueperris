@@ -16,6 +16,7 @@ class _HistorialScreenState extends State<HistorialScreen> {
   static const Color fondo = Color(0xFFF7FAF6);
 
   final db = Supabase.instance.client;
+  RealtimeChannel? _canalHistorial;
 
   List<Map<String, dynamic>> mascotas = [];
   List<Map<String, dynamic>> registros = [];
@@ -26,10 +27,60 @@ class _HistorialScreenState extends State<HistorialScreen> {
 
   String filtroSeleccionado = 'Todos';
 
+  void _escucharCambios() {
+    final usuario = db.auth.currentUser;
+
+    if (usuario == null) return;
+
+    _canalHistorial = db
+        .channel('historial-cliente-${usuario.id}')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'mascotas',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'usuario_id',
+            value: usuario.id,
+          ),
+          callback: (payload) {
+            cargarMascotas();
+          },
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'historial_medico',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'usuario_id',
+            value: usuario.id,
+          ),
+          callback: (payload) {
+            final id = mascotaSeleccionada;
+
+            if (id != null) {
+              seleccionarMascota(id);
+            }
+          },
+        )
+        .subscribe();
+  }
+
   @override
   void initState() {
     super.initState();
+    _escucharCambios();
     cargarMascotas();
+  }
+
+  @override
+  void dispose() {
+    if (_canalHistorial != null) {
+      db.removeChannel(_canalHistorial!);
+    }
+
+    super.dispose();
   }
 
   Future<void> cargarMascotas() async {
@@ -49,6 +100,7 @@ class _HistorialScreenState extends State<HistorialScreen> {
       if (!mounted) return;
 
       final lista = List<Map<String, dynamic>>.from(datos);
+      final idAnterior = mascotaSeleccionada;
 
       setState(() {
         mascotas = lista;
@@ -56,8 +108,21 @@ class _HistorialScreenState extends State<HistorialScreen> {
       });
 
       if (lista.isNotEmpty) {
-        final id = int.parse(lista.first['id'].toString());
+        final existeAnterior = lista.any(
+          (mascota) => int.parse(mascota['id'].toString()) == idAnterior,
+        );
+
+        final id = existeAnterior
+            ? idAnterior!
+            : int.parse(lista.first['id'].toString());
+
         await seleccionarMascota(id);
+      } else {
+        setState(() {
+          mascotaSeleccionada = null;
+          registros = [];
+          cargandoHistorial = false;
+        });
       }
     } catch (e) {
       if (!mounted) return;

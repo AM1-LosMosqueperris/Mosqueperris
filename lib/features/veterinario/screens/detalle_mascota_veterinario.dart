@@ -17,6 +17,7 @@ class _DetalleMascotaVeterinarioScreenState
   static const Color verdeClaro = Color(0xFFE8F5ED);
 
   final supabase = Supabase.instance.client;
+  RealtimeChannel? canalHistorial;
 
   final formKey = GlobalKey<FormState>();
   final descripcionController = TextEditingController();
@@ -35,19 +36,44 @@ class _DetalleMascotaVeterinarioScreenState
   void initState() {
     super.initState();
     cargarHistorial();
+    escucharHistorial();
+  }
+
+  void escucharHistorial() {
+    canalHistorial = supabase
+        .channel('historial-veterinario-${widget.mascota['id']}')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'historial_medico',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'mascota_id',
+            value: widget.mascota['id'],
+          ),
+          callback: (payload) {
+            cargarHistorial(mostrarCarga: false);
+          },
+        )
+        .subscribe();
   }
 
   @override
   void dispose() {
+    if (canalHistorial != null) {
+      supabase.removeChannel(canalHistorial!);
+    }
+
     descripcionController.dispose();
     diagnosticoController.dispose();
     tratamientoController.dispose();
     vacunaController.dispose();
     observacionesController.dispose();
+
     super.dispose();
   }
 
-  Future<void> cargarHistorial() async {
+  Future<void> cargarHistorial({bool mostrarCarga = true}) async {
     setState(() {
       cargando = true;
     });
@@ -68,9 +94,11 @@ class _DetalleMascotaVeterinarioScreenState
     } catch (e) {
       if (!mounted) return;
 
-      setState(() {
-        cargando = false;
-      });
+      if (mostrarCarga) {
+        setState(() {
+          cargando = true;
+        });
+      }
 
       mensaje('No se pudo cargar el historial médico.');
     }
