@@ -8,6 +8,7 @@ import 'package:petcare_santa_cruz/features/administrador/screens/reportes_admin
 import 'package:petcare_santa_cruz/features/notificaciones/screens/notificaciones.dart';
 import 'package:petcare_santa_cruz/features/administrador/screens/gestion_consultas_admin.dart';
 import 'package:petcare_santa_cruz/features/administrador/screens/gestion_productos.dart';
+import 'package:petcare_santa_cruz/features/administrador/screens/gestion_pedidos_admin.dart';
 
 class PanelAdministradorScreen extends StatefulWidget {
   const PanelAdministradorScreen({super.key});
@@ -448,6 +449,7 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
     return Scaffold(
       backgroundColor: fondo,
       appBar: AppBar(
+        toolbarHeight: 68,
         elevation: 0,
         backgroundColor: verde,
         foregroundColor: Colors.white,
@@ -455,15 +457,22 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
           children: [
             const Icon(Icons.pets_rounded, size: 25),
             const SizedBox(width: 10),
-            Text(
-              selectedIndex == 0
-                  ? 'PetCare Administrador'
-                  : selectedIndex == 1
-                  ? 'Gestión'
-                  : selectedIndex == 2
-                  ? 'Usuarios'
-                  : 'Reportes',
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            Expanded(
+              child: Text(
+                selectedIndex == 0
+                    ? 'PetCare Administrador'
+                    : selectedIndex == 1
+                    ? 'Gestión'
+                    : selectedIndex == 2
+                    ? 'Usuarios'
+                    : 'Reportes',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ),
           ],
         ),
@@ -968,6 +977,14 @@ class _PanelAdministradorScreenState extends State<PanelAdministradorScreen> {
                       Colors.purple,
                       const Color(0xFFF2EAFE),
                       () => abrirPantalla(const GestionProductosScreen()),
+                    ),
+                    tarjetaModulo(
+                      'Pedidos',
+                      'Consulta compras y actualiza sus estados.',
+                      Icons.shopping_bag_rounded,
+                      Colors.green,
+                      const Color(0xFFE8F5E9),
+                      () => abrirPantalla(const GestionPedidosAdminScreen()),
                     ),
                     tarjetaModulo(
                       'Reportes',

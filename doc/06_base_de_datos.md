@@ -167,7 +167,35 @@ El administrador puede crear y editar productos, actualizar su stock y activar o
 
 Los clientes pueden consultar los productos activos desde el módulo de tienda.
 
-#### 3.9. Otras tablas
+#### 3.9. pedidos
+
+Almacena los pedidos realizados por los clientes mediante el módulo de tienda.
+
+Campos identificados:
+
+- `id`: identificador del pedido.
+- `usuario_id`: identificador del usuario que realiza la compra.
+- `total`: importe total del pedido.
+- `estado`: estado actual del pedido.
+- `fecha`: fecha de registro del pedido.
+
+Los pedidos se encuentran asociados al usuario que realiza la compra. El sistema permite registrar las compras y consultar su información y estado.
+
+#### 3.10. negocios
+
+Almacena la información de los establecimientos veterinarios que se muestran en el mapa de la aplicación.
+
+Campos identificados:
+
+- `id`: identificador del establecimiento.
+- `nombre`: nombre del negocio.
+- `telefono`: número de contacto, cuando está disponible.
+- `latitud`: coordenada geográfica de latitud.
+- `longitud`: coordenada geográfica de longitud.
+
+La información de ubicación permite representar los establecimientos mediante marcadores en el mapa utilizando OpenStreetMap y flutter_map.
+
+#### 3.11. Otras tablas
 
 El proyecto también utiliza las siguientes tablas:
 
@@ -175,6 +203,8 @@ El proyecto también utiliza las siguientes tablas:
 - `vacunas`: información relacionada con las vacunas de las mascotas.
 
 Los campos y relaciones específicos de estas tablas deben consultarse directamente en el esquema de Supabase antes de realizar modificaciones en su documentación.
+
+El carrito de compras constituye una funcionalidad de la aplicación y no debe documentarse como una tabla independiente mientras no se confirme que existe una tabla específica para almacenarlo.
 
 ### 4. Relaciones principales
 
@@ -188,9 +218,12 @@ Las relaciones principales del sistema son:
 - Una reserva puede estar asociada a una mascota.
 - Un usuario puede recibir varias notificaciones.
 - Un usuario puede enviar varias consultas.
+- Un usuario puede realizar varios pedidos.
+- Los pedidos se asocian al usuario que realiza la compra mediante `usuario_id`.
 - Los registros médicos identifican al veterinario responsable cuando corresponde.
+- La tabla `negocios` almacena establecimientos y sus coordenadas geográficas para mostrarlos en el mapa.
 
-Estas relaciones permiten mantener organizada la información y asociar los registros con los usuarios correspondientes.
+Estas relaciones permiten mantener organizada la información y asociar los registros con los usuarios y mascotas correspondientes.
 
 ### 5. Seguridad de la base de datos
 
@@ -208,15 +241,18 @@ Entre los controles implementados se encuentran:
 - Los administradores pueden consultar y cambiar el estado de las consultas mediante funciones autorizadas.
 - Los usuarios pueden consultar sus propias notificaciones y actualizar su estado de lectura.
 - Los clientes pueden consultar los productos activos y los servicios disponibles.
+- Los clientes pueden registrar pedidos asociados a su propia cuenta y consultar su información, de acuerdo con los permisos habilitados.
+- Los administradores pueden gestionar los pedidos mediante las operaciones autorizadas del backend.
+- La información de los negocios se consulta de acuerdo con las políticas de acceso configuradas en Supabase.
 - Las operaciones administrativas sobre servicios y productos se realizan mediante funciones protegidas del backend.
 
 Las operaciones sensibles no dependen únicamente de las restricciones visuales de la aplicación, ya que también se controlan mediante permisos de PostgreSQL y políticas RLS.
 
+Los permisos específicos deben mantenerse sincronizados con las políticas realmente configuradas en Supabase.
+
 ### 6. Funciones y automatizaciones
 
-El backend incorpora funciones y mecanismos de automatización para determinadas operaciones.
-
-Entre ellos se encuentran:
+El backend incorpora funciones y mecanismos de automatización para determinadas operaciones administrativas y procesos del sistema.
 
 #### 6.1. Funciones relacionadas con usuarios
 
@@ -253,7 +289,11 @@ Entre ellos se encuentran:
 - `obtener_estadisticas_admin`: permite obtener indicadores administrativos.
 - `obtener_reportes_admin`: permite obtener información estadística para el módulo de reportes.
 
-#### 6.7. Triggers y automatizaciones
+#### 6.7. Operaciones relacionadas con pedidos
+
+El módulo de tienda permite registrar pedidos de los clientes y consultar su información. Las operaciones de gestión administrativa se realizan mediante los permisos y mecanismos de acceso configurados en el backend.
+
+#### 6.8. Triggers y automatizaciones
 
 El backend dispone de triggers que ejecutan acciones ante determinados eventos:
 
@@ -265,6 +305,8 @@ El backend dispone de triggers que ejecutan acciones ante determinados eventos:
 - Generación de notificaciones para el cliente cuando se incorpora un nuevo registro al historial médico.
 
 Las funciones utilizadas por estos mecanismos tienen permisos de ejecución restringidos, de acuerdo con su finalidad.
+
+Las funciones, triggers y permisos deben verificarse en Supabase antes de documentar nuevas automatizaciones o modificar las existentes.
 
 ### 7. Actualizaciones en tiempo real
 
@@ -280,18 +322,24 @@ Entre las tablas utilizadas por los módulos con actualizaciones en tiempo real 
 - `consultas`
 - `perfiles`
 
+El módulo de pedidos también permite consultar el estado de las compras registradas. La actualización automática de sus datos depende de que la tabla correspondiente esté habilitada en Supabase Realtime y de que la pantalla tenga configurada su suscripción.
+
 Este mecanismo permite reflejar cambios en los módulos correspondientes sin depender exclusivamente de una actualización manual de la pantalla.
+
+La incorporación de nuevas tablas a Realtime debe acompañarse de la configuración de publicación y suscripciones necesarias.
 
 ### 8. Flujo de acceso a los datos
 
 1. El usuario inicia sesión en la aplicación.
 2. Supabase Auth autentica al usuario.
-3. La aplicación realiza una solicitud al backend.
+3. La aplicación realiza una solicitud al backend para consultar o modificar información.
 4. PostgreSQL identifica el contexto del usuario y evalúa los permisos y políticas RLS correspondientes.
 5. Si se trata de una operación administrativa, se ejecuta la función protegida correspondiente y se verifican los permisos.
 6. Se procesa la consulta o modificación autorizada.
 7. La aplicación recibe el resultado y actualiza la interfaz.
-8. Cuando existen suscripciones configuradas, Supabase Realtime comunica los cambios correspondientes.
+8. En el módulo de tienda, los productos se consultan y las compras se registran mediante el módulo de pedidos.
+9. En el módulo de mapa, la aplicación consulta los negocios y utiliza sus coordenadas geográficas para representar sus ubicaciones.
+10. Cuando existen suscripciones configuradas, Supabase Realtime comunica los cambios correspondientes.
 
 ### 9. Consideraciones de mantenimiento
 

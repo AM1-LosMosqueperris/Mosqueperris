@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class ContactoScreen extends StatelessWidget {
   final VoidCallback? onOpenMenu;
@@ -7,6 +8,27 @@ class ContactoScreen extends StatelessWidget {
 
   static const Color verde = Color(0xFF17623F);
   static const Color verdeClaro = Color(0xFFE8F5ED);
+  Future<void> _abrirEnlace(String url) async {
+    final uri = Uri.parse(url);
+
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      debugPrint('No se pudo abrir: $url');
+    }
+  }
+
+  Future<void> _abrirMapa() async {
+    await _abrirEnlace('https://maps.app.goo.gl/jwGQBucKy2rHhfDG8');
+  }
+
+  Future<void> _llamar() async {
+    await _abrirEnlace('tel:+59167731820');
+  }
+
+  Future<void> _whatsapp() async {
+    await _abrirEnlace(
+      'https://wa.me/59167731820?text=Hola%20PetCare%20Santa%20Cruz',
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -77,14 +99,10 @@ class ContactoScreen extends StatelessWidget {
             _informacion(
               Icons.location_on_outlined,
               'Ubicación',
-              'Santa Cruz de la Sierra, Bolivia',
+              'Universidad Privada Domingo Savio (UPDS), Santa Cruz de la Sierra',
             ),
 
-            _informacion(
-              Icons.phone_outlined,
-              'Teléfono',
-              'Número de contacto por confirmar',
-            ),
+            _informacion(Icons.phone_outlined, 'Teléfono', '+591 67731820'),
 
             _informacion(
               Icons.access_time,
@@ -95,9 +113,63 @@ class ContactoScreen extends StatelessWidget {
             _informacion(
               Icons.email_outlined,
               'Correo electrónico',
-              'Información por confirmar',
+              'leoncarballo354@gmail.com',
+            ),
+            const Text(
+              'Contáctanos',
+              style: TextStyle(
+                color: verde,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
             ),
 
+            const SizedBox(height: 12),
+
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _llamar,
+                icon: const Icon(Icons.phone),
+                label: const Text('Llamar a PetCare'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: verde,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.all(15),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 10),
+
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _whatsapp,
+                icon: const Icon(Icons.chat),
+                label: const Text('Contactar por WhatsApp'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF25D366),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.all(15),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 10),
+
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: _abrirMapa,
+                icon: const Icon(Icons.map_outlined),
+                label: const Text('Ver ubicación en Google Maps'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: verde,
+                  padding: const EdgeInsets.all(15),
+                ),
+              ),
+            ),
             const SizedBox(height: 20),
 
             Container(

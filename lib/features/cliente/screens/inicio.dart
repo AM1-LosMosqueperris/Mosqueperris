@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:petcare_santa_cruz/utils/fechas.dart';
+import 'package:petcare_santa_cruz/features/clima/screens/clima_screen.dart';
+import 'package:petcare_santa_cruz/features/cliente/screens/mapa_negocios.dart';
 
 class InicioScreen extends StatefulWidget {
   final Function(int) onNavigate;
@@ -554,7 +556,7 @@ class _InicioScreenState extends State<InicioScreen> {
                 physics: const NeverScrollableScrollPhysics(),
                 crossAxisSpacing: 12,
                 mainAxisSpacing: 12,
-                childAspectRatio: 1.22,
+                childAspectRatio: 1.0,
                 children: [
                   _accesoRapido(
                     'Mis mascotas',
@@ -587,6 +589,34 @@ class _InicioScreenState extends State<InicioScreen> {
                     Colors.purple,
                     const Color(0xFFF2EAFE),
                     () => widget.onNavigate(5),
+                  ),
+                  _accesoRapido(
+                    'Clima',
+                    'Consulta el clima de Santa Cruz',
+                    Icons.wb_sunny,
+                    Colors.orange,
+                    const Color(0xFFFFF3E0),
+                    () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const ClimaScreen()),
+                      );
+                    },
+                  ),
+                  _accesoRapido(
+                    'Mapa de veterinarias',
+                    'Encuentra establecimientos cercanos',
+                    Icons.map_outlined,
+                    Colors.green,
+                    const Color(0xFFE8F5ED),
+                    () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const MapaNegociosScreen(),
+                        ),
+                      );
+                    },
                   ),
                 ],
               ),

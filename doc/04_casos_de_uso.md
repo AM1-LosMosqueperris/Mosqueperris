@@ -47,6 +47,13 @@ El sistema contempla tres actores principales: cliente, veterinario y administra
 | CU-025 | Consultar detalles de una reserva | Administrador |
 | CU-026 | Recibir actualizaciones en tiempo real | Cliente, veterinario y administrador |
 | CU-027 | Confirmar correo electrónico | Cliente |
+| CU-028 | Cancelar reserva propia | Cliente |
+| CU-029 | Gestionar carrito de compras | Cliente |
+| CU-030 | Confirmar compra y registrar pedido | Cliente |
+| CU-031 | Consultar pedidos realizados | Cliente y administrador |
+| CU-032 | Consultar establecimientos veterinarios en el mapa | Cliente |
+| CU-033 | Consultar ubicación y contactar establecimientos | Cliente |
+| CU-034 | Consultar información climática | Cliente |
 
 ### 4. Descripción de casos de uso principales
 
@@ -290,6 +297,98 @@ El sistema contempla tres actores principales: cliente, veterinario y administra
   5. La aplicación actualiza la información mostrada.
 - **Resultado:** La pantalla refleja los cambios recibidos sin requerir una actualización manual, según la suscripción configurada.
 
+#### CU-028. Cancelar reserva propia
+
+- **Actor:** Cliente.
+- **Objetivo:** Cancelar una reserva realizada por el propio cliente.
+- **Precondición:** El cliente debe estar autenticado y tener una reserva registrada.
+- **Flujo principal:**
+  1. El cliente ingresa al módulo de reservas.
+  2. Consulta sus reservas.
+  3. Selecciona la reserva que desea cancelar.
+  4. Selecciona la opción de cancelación.
+  5. El sistema actualiza el estado de la reserva según los permisos establecidos.
+- **Resultado:** La reserva queda con el estado de cancelación correspondiente.
+
+#### CU-029. Gestionar carrito de compras
+
+- **Actor:** Cliente.
+- **Objetivo:** Organizar los productos que desea comprar.
+- **Precondición:** El cliente debe acceder a la tienda y seleccionar productos disponibles.
+- **Flujo principal:**
+  1. El cliente ingresa a la tienda.
+  2. Consulta los productos disponibles.
+  3. Selecciona un producto.
+  4. Lo agrega al carrito.
+  5. Consulta los productos agregados.
+  6. Puede modificar las cantidades o retirar productos según las opciones disponibles.
+- **Resultado:** El carrito muestra los productos seleccionados y sus cantidades.
+
+#### CU-030. Confirmar compra y registrar pedido
+
+- **Actor:** Cliente.
+- **Objetivo:** Registrar un pedido a partir de los productos seleccionados.
+- **Precondición:** El cliente debe tener productos en el carrito.
+- **Flujo principal:**
+  1. El cliente ingresa al carrito.
+  2. Revisa los productos y las cantidades.
+  3. Consulta el total de la compra.
+  4. Confirma la operación.
+  5. El sistema registra el pedido asociado al usuario autenticado.
+  6. El sistema muestra el resultado de la operación.
+- **Resultado:** El pedido queda registrado en el sistema.
+
+#### CU-031. Consultar pedidos realizados
+
+- **Actor:** Cliente y administrador.
+- **Objetivo:** Consultar los pedidos registrados.
+- **Precondición:** El usuario debe estar autenticado y contar con los permisos correspondientes.
+- **Flujo principal:**
+  1. El usuario ingresa al módulo de pedidos correspondiente a su perfil.
+  2. El sistema consulta los pedidos permitidos.
+  3. Se muestran los datos y estados disponibles.
+  4. El usuario selecciona un pedido para consultar sus detalles, cuando la pantalla lo permite.
+- **Resultado:** Se visualiza la información de los pedidos autorizados.
+
+#### CU-032. Consultar establecimientos veterinarios en el mapa
+
+- **Actor:** Cliente.
+- **Objetivo:** Visualizar la ubicación de establecimientos veterinarios.
+- **Precondición:** El dispositivo debe disponer de conexión a Internet.
+- **Flujo principal:**
+  1. El cliente ingresa al módulo del mapa.
+  2. La aplicación consulta los establecimientos registrados.
+  3. Se obtiene la información de ubicación disponible.
+  4. El sistema muestra un mapa con los establecimientos encontrados.
+  5. El cliente selecciona un establecimiento para consultar sus detalles.
+- **Resultado:** El cliente puede visualizar la ubicación y los datos disponibles de los establecimientos.
+
+#### CU-033. Consultar ubicación y contactar establecimientos
+
+- **Actor:** Cliente.
+- **Objetivo:** Consultar la ubicación de un establecimiento y utilizar sus opciones de contacto.
+- **Precondición:** El establecimiento debe contar con información de ubicación o contacto.
+- **Flujo principal:**
+  1. El cliente selecciona un establecimiento.
+  2. Consulta los datos disponibles.
+  3. Puede seleccionar la opción de WhatsApp si existe un número registrado.
+  4. Puede realizar una llamada si existe un teléfono disponible.
+  5. Puede abrir la ubicación o ruta mediante una aplicación externa de mapas.
+- **Resultado:** El cliente puede utilizar las opciones de contacto y ubicación disponibles.
+
+#### CU-034. Consultar información climática
+
+- **Actor:** Cliente.
+- **Objetivo:** Consultar las condiciones climáticas disponibles.
+- **Precondición:** El dispositivo debe disponer de conexión a Internet para consultar el servicio externo.
+- **Flujo principal:**
+  1. El cliente ingresa al módulo de clima.
+  2. La aplicación solicita información al servicio Open-Meteo.
+  3. El sistema procesa la respuesta recibida.
+  4. Se muestran los datos disponibles, como temperatura actual, sensación térmica, humedad, viento y precipitación.
+  5. Si ocurre un error de conexión, se muestra un mensaje informativo.
+- **Resultado:** El cliente visualiza la información climática disponible o un mensaje indicando que no fue posible obtenerla.
+
 ### 5. Flujos generales de navegación
 
 #### 5.1. Flujo de autenticación y acceso
@@ -333,15 +432,25 @@ flowchart TD
     B --> I[Tienda]
     B --> J[Consultas y contacto]
     B --> K[Notificaciones]
-    D --> L[Registrar o consultar mascotas]
-    E --> M[Consultar servicios]
-    F --> N[Solicitar o consultar reserva]
-    N --> O[Consultar estado o cancelar reserva]
-    G --> P[Consultar vacunas]
-    H --> Q[Consultar registros médicos]
-    I --> R[Consultar productos disponibles]
-    J --> S[Consultar información o enviar consulta]
-    K --> T[Consultar o marcar notificaciones como leídas]
+    B --> L[Mapa veterinario]
+    B --> M[Clima]
+
+    D --> N[Registrar o consultar mascotas]
+    E --> O[Consultar servicios]
+    F --> P[Solicitar o consultar reserva]
+    P --> Q[Consultar estado o cancelar reserva]
+    G --> R[Consultar vacunas]
+    H --> S[Consultar registros médicos]
+    I --> T[Consultar productos]
+    T --> U[Agregar productos al carrito]
+    U --> V[Revisar carrito]
+    V --> W[Confirmar compra]
+    W --> X[Registrar pedido]
+    X --> Y[Consultar pedidos]
+    J --> Z[Enviar consulta o contactar]
+    K --> AA[Consultar notificaciones]
+    L --> AB[Consultar establecimientos y ubicaciones]
+    M --> AC[Consultar información climática]
 ```
 
 #### 5.3. Flujo del veterinario

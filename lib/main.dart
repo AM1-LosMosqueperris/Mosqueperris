@@ -18,6 +18,7 @@ import 'package:petcare_santa_cruz/features/auth/screens/nueva_password.dart';
 import 'package:petcare_santa_cruz/features/veterinario/screens/panel_veterinario.dart';
 import 'package:petcare_santa_cruz/features/administrador/screens/panel_administrador.dart';
 import 'package:petcare_santa_cruz/features/notificaciones/screens/notificaciones.dart';
+import 'package:petcare_santa_cruz/features/cliente/screens/mis_pedidos.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -155,6 +156,7 @@ class _PetCareNavigationState extends State<PetCareNavigation> {
     ContactoScreen(onOpenMenu: abrirMenu),
     ConsultasScreen(onOpenMenu: abrirMenu),
     NotificacionesScreen(onOpenMenu: abrirMenu),
+    MisPedidosScreen(onOpenMenu: abrirMenu),
   ];
 
   void abrirMenu() {
@@ -322,6 +324,7 @@ class _PetCareNavigationState extends State<PetCareNavigation> {
                   _opcionMenu(Icons.contact_support_outlined, 'Contacto', 7),
                   _opcionMenu(Icons.question_answer_outlined, 'Consultas', 8),
                   _opcionMenu(Icons.notifications_none, 'Notificaciones', 9),
+                  _opcionMenu(Icons.shopping_bag_outlined, 'Mis pedidos', 10),
                 ],
               ),
             ),

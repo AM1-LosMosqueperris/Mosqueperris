@@ -101,7 +101,30 @@ Se puede consultar información como:
 
 Los productos desactivados por el administrador dejan de aparecer en la tienda.
 
-#### 3.8. Consultas y contacto
+#### 3.8. Carrito de compras
+
+Permite seleccionar productos de la tienda y preparar un pedido.
+
+Las operaciones disponibles incluyen:
+
+1. Seleccionar un producto.
+2. Agregarlo al carrito.
+3. Consultar los productos seleccionados.
+4. Revisar las cantidades y el total.
+5. Modificar o retirar productos del carrito, según las opciones disponibles.
+6. Confirmar el pedido.
+
+#### 3.9. Pedidos
+
+Después de confirmar una compra, el cliente puede consultar sus pedidos y revisar información como:
+
+- Total del pedido.
+- Fecha de registro.
+- Estado del pedido.
+
+El estado permite conocer el avance del pedido según la información registrada por el sistema.
+
+#### 3.10. Consultas y contacto
 
 El módulo de consultas permite enviar mensajes al personal de PetCare.
 
@@ -114,12 +137,35 @@ Para registrar una consulta:
 
 También se puede acceder a la sección de contacto para consultar las opciones de comunicación disponibles.
 
-#### 3.9. Notificaciones
+#### 3.11. Mapa de veterinarias
+
+Permite visualizar la ubicación de los negocios veterinarios registrados en el sistema.
+
+El mapa utiliza OpenStreetMap y muestra las ubicaciones mediante sus coordenadas geográficas.
+
+El cliente puede seleccionar una ubicación y utilizar las opciones disponibles para contactar al negocio o consultar cómo llegar.
+
+#### 3.12. Clima
+
+Permite consultar información meteorológica actual mediante el servicio Open-Meteo.
+
+Entre los datos que puede mostrar se encuentran:
+
+- Clima actual.
+- Sensación térmica.
+- Humedad.
+- Velocidad del viento.
+- Precipitación.
+
+La información depende de la disponibilidad del servicio y de la conexión a internet.
+
+#### 3.13. Notificaciones
 
 Permite consultar avisos relacionados con las actividades de la cuenta, como:
 
 - Cambios en el estado de las reservas.
 - Nuevos registros médicos.
+- Actualizaciones y avisos de pedidos.
 - Otros avisos generados por el sistema.
 
 ### 4. Funcionalidades del veterinario
@@ -247,7 +293,32 @@ Sus operaciones incluyen:
 
 Los productos activos aparecen en la tienda del cliente.
 
-#### 5.8. Reportes y estadísticas
+#### 5.8. Gestión de pedidos
+
+Permite consultar los pedidos registrados por los clientes.
+
+El administrador puede:
+
+- Consultar los pedidos recibidos.
+- Revisar el usuario que realizó el pedido.
+- Consultar el total y la fecha de registro.
+- Revisar el estado de cada pedido.
+- Gestionar la información del pedido según las opciones habilitadas.
+
+#### 5.9. Gestión de negocios veterinarios
+
+Permite administrar la información de los negocios que aparecen en el mapa de veterinarias.
+
+Los registros pueden contener:
+
+- Nombre del negocio.
+- Número de teléfono.
+- Latitud.
+- Longitud.
+
+Esta información permite mostrar las ubicaciones en el mapa y facilitar el contacto con los negocios registrados.
+
+#### 5.10. Reportes y estadísticas
 
 Permite consultar información resumida sobre el funcionamiento del sistema.
 
@@ -259,11 +330,13 @@ Incluye datos relacionados con:
 - Servicios solicitados.
 - Atenciones médicas registradas.
 
-#### 5.9. Notificaciones
+#### 5.11. Notificaciones
 
-Permite consultar avisos administrativos relacionados con nuevas reservas, registros de clientes y otras actividades del sistema.
+Permite consultar avisos administrativos relacionados con nuevas reservas, registros de clientes, pedidos y otras actividades del sistema.
 
 ### 6. Seguridad y recomendaciones
+
+Para utilizar PetCare Santa Cruz de manera adecuada, se recomienda seguir estas indicaciones:
 
 - Mantener las credenciales de acceso en privado.
 - Utilizar contraseñas seguras.
@@ -272,12 +345,29 @@ Permite consultar avisos administrativos relacionados con nuevas reservas, regis
 - Consultar los registros médicos antes de tomar decisiones relacionadas con la atención de una mascota.
 - Utilizar únicamente las funciones habilitadas para el perfil correspondiente.
 - No compartir cuentas de administrador o veterinario.
+- Verificar los datos de los productos y pedidos antes de confirmar una compra.
+- Comprobar la información de contacto antes de realizar llamadas o enviar mensajes.
+- Mantener conexión a internet para utilizar las funciones que dependen de Supabase y servicios externos.
+- Tener en cuenta que el mapa y la información meteorológica dependen de servicios externos.
 - Mantener actualizada la aplicación cuando se publiquen nuevas versiones.
 
 ### 7. Consideraciones finales
 
 PetCare Santa Cruz proporciona herramientas para centralizar la gestión del cuidado de mascotas y facilitar la interacción entre clientes, veterinarios y administradores.
 
-La aplicación incorpora mecanismos de actualización en tiempo real en los módulos correspondientes, permitiendo que determinados cambios realizados por otros usuarios se reflejen sin necesidad de salir y volver a ingresar a la pantalla.
+La aplicación integra funcionalidades para:
 
-Las opciones disponibles pueden variar según el rol del usuario y las funcionalidades habilitadas en la versión instalada.
+- Registrar y administrar mascotas.
+- Consultar servicios y gestionar reservas.
+- Consultar vacunas e historiales médicos.
+- Visualizar productos y realizar pedidos mediante el carrito de compras.
+- Enviar consultas y recibir notificaciones.
+- Localizar negocios veterinarios mediante un mapa basado en OpenStreetMap.
+- Consultar información meteorológica mediante Open-Meteo.
+- Facilitar la comunicación con negocios mediante WhatsApp y llamadas telefónicas.
+
+La aplicación utiliza Supabase como backend para gestionar la autenticación y los datos del sistema.
+
+Además, incorpora mecanismos de actualización en tiempo real en los módulos correspondientes, permitiendo que determinados cambios realizados por otros usuarios se reflejen sin necesidad de salir y volver a ingresar a la pantalla.
+
+Las opciones disponibles pueden variar según el rol del usuario y las funcionalidades habilitadas en la versión instalada. Algunas operaciones requieren conexión a internet y disponibilidad de los servicios externos.

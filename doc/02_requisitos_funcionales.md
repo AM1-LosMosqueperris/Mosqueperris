@@ -7,6 +7,8 @@ Los requisitos funcionales describen las operaciones y servicios que debe propor
 
 El sistema contempla tres perfiles principales: cliente, veterinario y administrador. Cada perfil dispone de funcionalidades de acuerdo con sus responsabilidades y permisos.
 
+Además, la aplicación incorpora funcionalidades complementarias para facilitar la ubicación de establecimientos veterinarios, la comunicación con los negocios y la consulta de información climática.
+
 ### 2. Requisitos de autenticación
 
 | Código | Requisito funcional |
@@ -35,6 +37,19 @@ El sistema contempla tres perfiles principales: cliente, veterinario y administr
 | RF-016 | El sistema debe permitir acceder al módulo de consultas. |
 | RF-017 | El sistema debe mostrar notificaciones relacionadas con las actividades de la cuenta del cliente. |
 | RF-038 | El sistema debe permitir al cliente cancelar sus propias reservas mediante la actualización de su estado, de acuerdo con los permisos establecidos. |
+| RF-050 | El sistema debe permitir agregar productos disponibles al carrito de compras. |
+| RF-051 | El sistema debe permitir consultar los productos agregados al carrito. |
+| RF-052 | El sistema debe permitir modificar las cantidades de los productos del carrito, según las opciones implementadas. |
+| RF-053 | El sistema debe permitir retirar productos del carrito. |
+| RF-054 | El sistema debe permitir confirmar la compra y registrar un pedido. |
+| RF-055 | El sistema debe permitir consultar los pedidos realizados por el cliente y sus estados. |
+| RF-056 | El sistema debe permitir visualizar establecimientos veterinarios disponibles en un mapa. |
+| RF-057 | El sistema debe permitir consultar la información disponible de los establecimientos veterinarios mostrados en el mapa. |
+| RF-058 | El sistema debe permitir abrir la ubicación de un establecimiento mediante una aplicación externa de mapas. |
+| RF-059 | El sistema debe permitir iniciar una comunicación con establecimientos mediante WhatsApp, cuando exista un número de contacto disponible. |
+| RF-060 | El sistema debe permitir realizar llamadas telefónicas a establecimientos que dispongan de un número registrado. |
+| RF-061 | El sistema debe permitir consultar información climática mediante un servicio externo. |
+| RF-062 | El sistema debe mostrar información climática disponible, como temperatura, sensación térmica, humedad, viento y precipitación. |
 
 ### 4. Requisitos del veterinario
 
@@ -65,6 +80,8 @@ El sistema contempla tres perfiles principales: cliente, veterinario y administr
 | RF-042 | El sistema debe permitir actualizar el stock de los productos. |
 | RF-043 | El sistema debe permitir activar o desactivar productos para controlar su disponibilidad en la tienda. |
 | RF-044 | El sistema debe permitir consultar y filtrar las reservas por sus estados y datos disponibles. |
+| RF-063 | El sistema debe permitir consultar los pedidos registrados por los clientes, según las opciones disponibles en el panel administrativo. |
+| RF-064 | El sistema debe permitir consultar los detalles y estados de los pedidos. |
 
 ### 6. Requisitos de notificaciones
 
@@ -96,11 +113,18 @@ El sistema contempla tres perfiles principales: cliente, veterinario y administr
 - Los veterinarios pueden registrar información médica, respetando los permisos establecidos.
 - Los productos desactivados no deben mostrarse en la tienda disponible para los clientes.
 - Las operaciones administrativas deben realizarse mediante los mecanismos protegidos del backend.
+- Los productos agregados al carrito deben estar disponibles para su compra.
+- Los pedidos deben quedar asociados al usuario que realiza la compra.
+- La información de contacto y ubicación debe utilizar los datos registrados de cada establecimiento.
+- La información climática depende de la disponibilidad del servicio externo.
+- Las funcionalidades que utilizan servicios externos pueden requerir conexión a Internet y la disponibilidad de las aplicaciones correspondientes.
 
 ### 9. Consideraciones
 
 Los requisitos descritos corresponden a las funcionalidades identificadas en el proyecto PetCare Santa Cruz. Su implementación está respaldada por la aplicación Flutter y los servicios de backend proporcionados por Supabase.
 
 La aplicación utiliza Supabase Auth para la autenticación, PostgreSQL para el almacenamiento de información y Supabase Realtime para recibir actualizaciones en los módulos configurados.
+
+Para las funcionalidades complementarias se utilizan OpenStreetMap mediante la biblioteca flutter_map y Open-Meteo para consultar información climática. Las opciones de contacto y navegación permiten utilizar aplicaciones externas compatibles con el dispositivo.
 
 Este documento podrá actualizarse conforme se incorporen nuevas funcionalidades al sistema.

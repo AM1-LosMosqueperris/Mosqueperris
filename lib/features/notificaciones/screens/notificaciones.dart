@@ -220,6 +220,10 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
         return Icons.medical_information_outlined;
       case 'usuario_nuevo':
         return Icons.person_add_alt_outlined;
+      case 'pedido_admin':
+        return Icons.shopping_bag_outlined;
+      case 'pedido_estado':
+        return Icons.local_shipping_outlined;
       default:
         return Icons.notifications_none;
     }
@@ -243,6 +247,10 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
         return Colors.indigo;
       case 'usuario_nuevo':
         return Colors.blueGrey;
+      case 'pedido_admin':
+        return Colors.deepOrange;
+      case 'pedido_estado':
+        return Colors.green;
       default:
         return Colors.orange;
     }
