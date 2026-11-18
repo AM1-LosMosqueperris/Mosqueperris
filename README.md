@@ -1,98 +1,210 @@
-#  PetCare Santa Cruz
+# PetCare Santa Cruz
 
-**Aplicación móvil para la gestión y el cuidado de mascotas.**
+**Aplicación móvil para la gestión integral del cuidado de mascotas.**
 
-##  Descripción del proyecto
+## 1. Descripción del proyecto
 
-PetCare Santa Cruz es una aplicación móvil desarrollada con Flutter y Dart, cuyo propósito es facilitar a los propietarios de mascotas el acceso a diferentes servicios y herramientas para organizar el cuidado de sus animales.
+PetCare Santa Cruz es una aplicación móvil desarrollada con Flutter y Dart, orientada a facilitar la gestión del cuidado de mascotas y conectar a propietarios con servicios veterinarios.
 
-La aplicación reúne funcionalidades como el registro de mascotas, consulta de servicios veterinarios, reserva de citas y control de vacunas, dentro de una interfaz sencilla e intuitiva.
+La plataforma permite registrar mascotas, consultar servicios, solicitar citas, acceder a información médica, consultar productos y realizar pedidos. También incorpora herramientas de contacto, ubicación de veterinarias y consulta del clima.
 
-##  Objetivo
+El sistema utiliza Supabase como backend para la autenticación, almacenamiento y gestión de datos.
 
-Desarrollar una aplicación móvil que permita centralizar la información y facilitar la organización de las actividades relacionadas con el cuidado de las mascotas.
+## 2. Objetivo general
 
-##  Funcionalidades principales
+Desarrollar una aplicación móvil que facilite la organización y administración del cuidado de las mascotas mediante una plataforma intuitiva, centralizada y accesible para clientes, veterinarios y administradores.
 
-Actualmente, el proyecto cuenta con los siguientes módulos:
+## 3. Tipos de usuarios
 
-1. **Inicio:** pantalla principal con acceso a las diferentes secciones.
-2. **Registro de mascotas:** permite registrar información de las mascotas.
-3. **Servicios:** muestra los servicios disponibles para el cuidado animal.
-4. **Reserva de citas:** permite registrar solicitudes de citas y seleccionar servicios.
-5. **Control de vacunas:** permite registrar vacunas y sus fechas correspondientes.
-6. **Historial:** sección destinada a consultar información relacionada con las mascotas.
-7. **Tienda:** muestra productos relacionados con el cuidado animal.
-8. **Contacto:** presenta información de contacto y ubicación de referencia.
+### Cliente
+- Registrarse e iniciar sesión.
+- Registrar y consultar sus mascotas.
+- Consultar servicios veterinarios.
+- Solicitar reservas y enviar consultas.
+- Consultar vacunas e historiales médicos.
+- Consultar productos disponibles.
+- Agregar productos al carrito y realizar pedidos.
+- Consultar veterinarias mediante un mapa.
+- Consultar información meteorológica.
+- Contactar mediante WhatsApp y llamadas.
+- Recibir notificaciones.
 
-##  Tecnologías utilizadas
+### Veterinario
+- Consultar información de mascotas.
+- Revisar historiales médicos.
+- Registrar información médica.
+- Gestionar citas veterinarias.
+- Recibir notificaciones relacionadas con las reservas.
 
-- **Flutter:** framework para el desarrollo de aplicaciones móviles.
+### Administrador
+- Gestionar usuarios y roles.
+- Administrar mascotas.
+- Gestionar servicios veterinarios.
+- Administrar reservas.
+- Gestionar productos y pedidos.
+- Consultar información administrativa.
+- Gestionar notificaciones.
+
+## 4. Funcionalidades principales
+
+| Módulo | Descripción |
+|---|---|
+| Autenticación | Registro, inicio de sesión y recuperación de contraseña. |
+| Inicio | Acceso a las funcionalidades según el tipo de usuario. |
+| Mascotas | Registro y consulta de información de mascotas. |
+| Servicios | Consulta de servicios veterinarios. |
+| Reservas | Solicitud y gestión de citas. |
+| Vacunas | Consulta del control de vacunas. |
+| Historial médico | Consulta y registro de información médica. |
+| Tienda | Catálogo de productos para mascotas. |
+| Carrito y pedidos | Selección de productos, cálculo de totales y creación de pedidos. |
+| Consultas | Envío y gestión de consultas. |
+| Veterinarias | Visualización de establecimientos mediante OpenStreetMap. |
+| Clima | Consulta de condiciones meteorológicas mediante Open-Meteo. |
+| Contacto | Acceso a WhatsApp, llamadas y navegación hacia ubicaciones. |
+| Notificaciones | Avisos relacionados con las actividades del sistema. |
+| Administración | Gestión de usuarios, servicios, reservas y otras operaciones administrativas. |
+
+## 5. Tecnologías utilizadas
+
+- **Flutter:** framework para el desarrollo de la aplicación móvil.
 - **Dart:** lenguaje de programación.
-- **Android Studio:** herramientas de desarrollo y emulación.
-- **Visual Studio Code:** editor de código.
-- **Git y GitHub:** control de versiones y alojamiento del código fuente.
+- **Supabase:** backend, autenticación y servicios de base de datos.
+- **PostgreSQL:** sistema de gestión de base de datos utilizado por Supabase.
+- **Open-Meteo:** servicio para consultar información meteorológica.
+- **OpenStreetMap:** servicio de mapas y visualización de ubicaciones.
+- **flutter_map:** paquete utilizado para integrar mapas en Flutter.
+- **url_launcher:** integración con aplicaciones externas para contacto y navegación.
+- **Visual Studio Code:** entorno de desarrollo.
+- **Android SDK:** herramientas para compilar y ejecutar la aplicación Android.
 
-## Plataforma de desarrollo
+## 6. Arquitectura del proyecto
 
-- Sistema operativo de desarrollo: Windows.
-- Plataforma de ejecución actual: Android.
-- Framework: Flutter.
+El código fuente utiliza una organización modular basada en funcionalidades (Feature-First), separando los módulos de administración, autenticación, clientes, veterinarios y servicios compartidos.
 
-## Requisitos
+Estructura general:
 
-Para ejecutar el proyecto se necesita:
+```text
+lib/
+├── config/
+├── core/
+├── database/
+├── features/
+│   ├── administrador/
+│   ├── auth/
+│   ├── cliente/
+│   ├── notificaciones/
+│   └── veterinario/
+├── models/
+├── services/
+├── utils/
+├── widgets/
+└── main.dart
+```
 
-- Flutter SDK.
-- Dart SDK (incluido con Flutter).
-- Android Studio o Visual Studio Code.
+Esta organización facilita el mantenimiento, la ampliación y la separación de responsabilidades de cada módulo.
+
+## 7. Requisitos para ejecutar el proyecto
+
+- Flutter SDK compatible con las dependencias del proyecto.
+- Dart SDK, incluido con Flutter.
 - Android SDK.
-- Un emulador Android o dispositivo compatible.
+- Visual Studio Code o Android Studio.
+- Emulador Android o dispositivo físico compatible.
+- Acceso a internet para los servicios remotos.
+- Proyecto de Supabase configurado y sus credenciales correspondientes.
 
-##  Instalación y ejecución
+## 8. Instalación y ejecución
 
-1. Clonar el repositorio:
+### Obtener el código fuente
 
-   ```bash
-   git clone URL_DEL_REPOSITORIO
-   ```
+Clonar el repositorio:
 
-2. Ingresar a la carpeta del proyecto:
+```bash
+git clone https://github.com/AM1-LosMosqueperris/Mosqueperris.git
+```
 
-   ```bash
-   cd petcare-app
-   ```
+Ingresar al directorio del proyecto:
 
-3. Descargar las dependencias:
+```bash
+cd Mosqueperris
+```
 
-   ```bash
-   flutter pub get
-   ```
+### Instalar dependencias
 
-4. Ejecutar la aplicación:
+```bash
+flutter pub get
+```
 
-   ```bash
-   flutter run
-   ```
+### Ejecutar la aplicación
 
-## Estado del proyecto
+```bash
+flutter run
+```
 
-**En desarrollo.**
+### Analizar el proyecto
 
-Se cuenta con las pantallas principales y la navegación entre los módulos. Entre los próximos pasos se contempla:
+```bash
+flutter analyze
+```
 
-- Implementar almacenamiento local mediante SQLite.
-- Conectar los módulos para compartir información.
-- Completar las funcionalidades pendientes.
-- Realizar pruebas de funcionamiento y navegación.
-- Mejorar la experiencia de usuario.
+### Ejecutar las pruebas
 
-##  Desarrollo
+```bash
+flutter test
+```
 
-Proyecto académico de desarrollo de aplicaciones móviles.
+### Generar el APK de producción
 
-**Nombre del proyecto:** PetCare Santa Cruz.
+```bash
+flutter build apk --release
+```
 
----
+El archivo APK se genera en:
 
-*PetCare Santa Cruz – Tecnología al servicio del cuidado de las mascotas.* 
+```text
+build/app/outputs/flutter-apk/app-release.apk
+```
+
+## 9. Configuración de Supabase
+
+La aplicación utiliza Supabase para conectarse al backend, gestionar la autenticación y consultar o almacenar información.
+
+La configuración se encuentra en:
+
+```text
+lib/config/config.dart
+```
+
+Para ejecutar el proyecto en otro equipo se deben configurar la URL del proyecto y la clave pública correspondiente.
+
+Las credenciales privadas y claves administrativas no deben incluirse en el repositorio ni compartirse públicamente.
+
+## 10. Servicios externos
+
+### Open-Meteo
+
+Se utiliza para obtener información meteorológica, como temperatura, sensación térmica, humedad, viento y precipitación.
+
+### OpenStreetMap
+
+Se utiliza para visualizar ubicaciones de veterinarias mediante `flutter_map`. La integración incluye la atribución correspondiente a OpenStreetMap y no requiere una clave de Google Maps API.
+
+### Aplicaciones externas
+
+La aplicación permite iniciar acciones de contacto y navegación mediante WhatsApp, el marcador telefónico y Google Maps.
+
+## 11. Pruebas y verificación
+
+En la verificación del proyecto se obtuvieron los siguientes resultados:
+
+- `flutter analyze`: sin problemas detectados.
+- `flutter test`: todas las pruebas automatizadas aprobadas.
+
+Estos resultados corresponden a las verificaciones realizadas durante el proceso de preparación de la versión de entrega.
+
+## 12. Consideraciones finales
+
+PetCare Santa Cruz integra herramientas para facilitar el cuidado de mascotas y la gestión de servicios veterinarios mediante una aplicación móvil.
+
+La combinación de Flutter, Supabase, Open-Meteo y OpenStreetMap permite ofrecer funcionalidades de administración, comunicación, consulta de información y ubicación en una misma plataforma.
